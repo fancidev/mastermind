@@ -1,0 +1,43 @@
+\chapter{Reference Implementation}
+
+\section{Overview}
+
+The program in this project plays the role of the code breaker. The goal is to find out the secret using as few guesses as possible. The program supports both the Mastermind rules and the GuessNumber rules, subject to the following limits:
+
+Maximum number of colors (defined by MM\_MAX\_COLORS): 10.
+
+Maximum number of pegs (defined by MM\_MAX\_PEGS): 6.
+
+Program Optimization Techniques
+
+While the code-breaking algorithms are quite straightforward, much effort of this project has been put to optimize the performance of a real-time code breaker. Some of the hot-spots are identified by the profiler. The major points of optimization are described below. Most of the optimized routines are implemented in standalone source files for clarity.
+
+Search space pruning. While all codewords are candidates for making a guess, some of them are equivalent in terms of bringing new information. For example, in the first round of a Number Guessing game, any guess works the same. Aware of this, we implement pruning by classifying digits into three classes: impossible, unguessed, and the rest. After each round of feedback, we update the list of distinct guesses (in terms of bringing information) and search within this list only. This reduces the search space significantly.
+
+Codeword comparison. This is the most intensive operation in the program, accounting for 40\% of all CPU time. The program uses SSE2 instructions (implemented via compiler intrinsics) to compare each pair of codewords in four instructions.
+
+Feedback frequency counting. The heuristic code breaker relies heavily on these routines to count statistics on partitions. This is an intensive operation which accounts for about 20\% of all CPU time. The program uses an ASM implementation to maximize performance. See Frequency.cpp.
+
+\section{Data Structure}
+
+\subsection{Codeword}
+
+\subsection{Feedback}
+
+\subsection{Strategy Tree}
+
+\section{Basic operations}
+
+\subsection{Codeword comparison}
+
+\subsection{Frequency table generation}
+
+\subsection{Codeword set partitioning}
+
+\section{Implementing Heuristic Strategies}
+
+ Obvious guesses
+ 
+\section{Implementing Optimal Strategies}
+ 
+\section{Implementing randomized strategies}

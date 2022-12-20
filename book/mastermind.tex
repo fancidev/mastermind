@@ -1,0 +1,143 @@
+%\documentclass[8pt,a5paper]{article}
+\documentclass{report}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{hyperref}
+\hypersetup{
+	pdftitle={Mastermind Strategies},
+	pdfkeywords={Mastermind, heuristic},
+	colorlinks=true,
+	pdfstartview={FitH},
+	linkcolor=black,
+	citecolor=blue,
+	urlcolor=black,
+}
+%\usepackage[small,textfont=it]{caption}
+\usepackage[small]{caption}
+\usepackage{listings}
+
+\setlength{\parskip}{1ex plus 0.5ex minus 0.2ex}
+
+\newcommand{\given}{\,|\,}
+\newcommand{\minmax}{\texttt{min-max}}
+\newcommand{\minavg}{\texttt{min-avg}}
+\newcommand{\maxent}{\texttt{max-entropy}}
+\newcommand{\maxpar}{\texttt{max-parts}}
+\newcommand{\cw}[1]{\texttt{#1}}
+\newcommand{\fb}[2]{\texttt{{#1}A{#2}B}}
+%\newcommand{\u}[1]{\underline{#1}}
+
+\theoremstyle{definition}
+\newtheorem*{definition}{Definition}
+%\newtheorem{definition}{Definition}
+\newtheorem*{note}{Note}
+
+\theoremstyle{plain}
+\newtheorem*{theorem}{Theorem}
+
+\newcommand{\vC}{\mathcal{C}}
+\newcommand{\vF}{\mathcal{F}}
+\newcommand{\vG}{\mathcal{G}}
+\newcommand{\vS}{\mathcal{S}}
+\newcommand{\vu}{\mathbf{u}}
+\newcommand{\vv}{\mathbf{v}}
+\newcommand{\vw}{\mathbf{w}}
+
+
+\begin{document}
+
+\title{Introduction to Mastermind Strategies}
+% Alternative book name:
+%  - (Practical) Mastermind Strategies
+%  - Mastering Mastermind
+\author{Author}
+\date{2012}
+\maketitle
+
+\input{abstract}
+
+\setcounter{tocdepth}{1}
+\tableofcontents
+
+%[*] entries marked with an asterisk are advanced topics. Skipping these topics doesn't affect a basic understanding of the subject. However they are needed for a practical implementation of the strategies.
+
+% Chapter 1. Introduction
+%   - Overview (history, rules, variations)
+%   - (Interactive) Examples
+%   - Overview of strategies (introduce the strategies, and introduce a table that describes how many codewords need to be solved in how many steps)
+% [secrets be revealed]
+%   - A Simple Strategy
+%   - Obviously-Optimal guesses
+%   - Strategy tree
+
+% Chapter 2. Heuristic Strategies
+%   - Overview [How it works]
+%   - The MinMax heuristic
+%   - The Minavg heuristic
+%   - The Max Entropy heuristic
+%   - The Max Parts heuristic
+%   - The Min Steps heuristic
+%   - Hybrid heuristics (e.g. WideDev, LongRect)
+%   - Comparison of heuristics
+
+% Chapter 3. Optimal Strategies
+%   - Overview
+%   - Equivalence of guesses [?] (Filter Equivalence)
+%     - Color Equivalence
+%     - Constraint Equivalence
+%     - Partition Equivalence
+%   - Isomorphism of guesses [*] (State/Partition Equivalence)
+%   - Search space pruning [*]
+%   - Using a pre-built strategy tree [*]
+%   - Extended/Adaptive strategy tree [*] (i.e. the tree not only contains guesses along the chosen strategy path, but also includes guesses if the user made a non-optimal guess halfway. The tree size in this case is much larger, and we must use isomorphism to detect the symmetry.)
+
+% Chapter 4. Randomized Strategies
+%   - Mastermind Satisfying Problem is NP-Complete
+% [know nothing about this]
+
+% Chapter 5. Variations (Other Topics, Related Topics)
+%   - With Lies
+%   - Static Mastermind
+%   - Dynamic Mastermind
+%   - Other improvements (e.g. two-phase optimization, hash collision group)
+
+% Chapter 6. C++ Implementation
+%   - Overview
+%   - Data Structure
+%     - Codeword
+%     - Feedback
+%     - Strategy Tree
+%   - Basic operations
+%     - Codeword comparison
+%     - Frequency table generation
+%     - Codeword set partitioning
+%   - Implementing Heuristic Strategies
+%     - Obvious guesses
+%   - Implementing Optimal Strategies
+%   - Implementing randomized strategies
+
+% Reference
+
+% Appendix
+%   - Entropy theory
+%   - Graph theory (in particular, graph isophosim)
+%   - Optimial strategy listing for Mastermind 
+%   - Optimal strategy listing for Guess-Number
+%   - Comparison of different strategiesStrategy tree
+
+\include{intro}
+\include{equiv}
+\include{heuristic}
+\include{optimal}
+\include{random}
+\include{variant}
+
+\appendix
+\include{appendix}
+\include{implement}
+
+\nocite{*}
+\bibliographystyle{plain}
+\bibliography{mastermind}
+
+\end{document}

@@ -1,0 +1,31 @@
+\chapter{Variations}
+
+Other Topics, Related Topics
+
+\section{Static Mastermind}
+
+\section{Dynamic Mastermind}
+
+In the standard Mastermind game, all that the code-maker does is to set up a secret at the beginning of the game, and then \emph{passively} responds to the guesses made by the code-maker. The role played by the code-maker is rather boring.
+
+To make the code-maker's role more interesting (and challenging), in a \emph{dynamic} Mastermind game, introduced by Bestavros and Belal \cite{bestavros86}, the codemaker is allowed to silently change the secret during the course of the game, as long as the secret is consistent with all the guesses and feedbacks so far. 
+
+For example, suppose the code-maker initially holds the secret 1234. Suppose that in the first round, the code-breaker makes the guess 1234 outright. Under the standard rules, the code-maker is obliged to respond with 4A0B and surrender the game. However, under the \emph{dynamic} rules, the code-maker is allowed to silently change the secret to, say, 3456, and reply with the feedback 0A2B. The game continues until the code-maker finally reveals the secret.
+
+It is easy to see that under either the standard rules or the dynamic rules, the code-maker will eventually lose because there are a finite number of codewords. However, under the dynamic rules, the code-maker is able to prolong the game for more steps. 
+
+In fact, it can be shown that when both sides play optimally, the game will require exactly [7??] rounds to finish. That is, after six rounds of guesses and responses, there is only one codeword left that conforms to all the constraints so far; the code-breaker will then guess this codeword and the code-maker has to respond with 4A0B.
+
+[Show this using exhaustive search]
+
+[Compare different combinations of heuristic strategies used by the code-maker and code-breaker]
+
+\section{Head-to-Head Play}
+
+[Tanaka also noted that a strategy which produces a minimum expected
+game length is not the optimal strategy for head-to-head play between two human
+opponents when a win by any number of moves scores the same as a win by a
+single move.] What does this mean??
+
+\section{Mastermind with a lie}
+

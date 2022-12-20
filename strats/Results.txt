@@ -1,0 +1,334 @@
+=========
+ Results
+=========
+
+Game Settings
+---------------
+  Codeword length:  4
+  Number of digits: 10
+  Allow repetition: no
+  Allow blank:      no
+
+Algorithm Descriptions
+------------------------
+  A1: minimizes the worst-case number of possibilities
+  A2: minimizes the worst-case number of possibilities, chosen from possibility
+only
+  A3: minimizes the expected number of possibilities
+  A4: minimizes the expected number of possibilities, chosen from possibility on
+ly
+  A5: guesses the first possibility
+
+Frequency Table
+-----------------
+  ##:   Avg    1    2    3    4    5    6    7    8    9   >9
+  A1: 5.560    1   13  108  596 1668 1768  752  129    5    -   (simple)
+  A2: 5.270    1    4   59  574 2430 1885   87    -    -    -   (min avg)
+  A3: 5.380    1    3   44  515 2124 2151  202    -    -    -   (min max)
+  A4: 5.320    1   13  109  645 2055 1923  291    3    -    -   (min avg, pos only)
+  A5: 5.350    1   13  108  619 2004 1932  360    3    -    -   (min max, pos only)
+
+
+=============
+ ANOTHER RUN
+=============
+
+Game Settings
+---------------
+  Codeword length:  4
+  Number of digits: 10
+  Allow repetition: no
+
+Algorithm Descriptions
+------------------------
+  A1: guesses the first possibility
+  A2: minimizes the worst-case number of possibilities
+  A3: minimizes the expected number of possibilities
+  A4: minimizes the expected number of guesses (entropy method)
+  A5: maximizes the number of partitions after a guess
+
+Frequency Table
+-----------------
+  ##:   Avg    1    2    3    4    5    6    7    8    9   >9     Time(s)
+  A1: 5.560    1   13  108  596 1668 1768  752  129    5    -     0.50
+  A2: 5.385    1    3   44  515 2124 2151  202    -    -    -    40.46
+  A3: 5.268    1    4   59  574 2430 1885   87    -    -    -    39.22
+  A4: 5.265    1    4   53  560 2515 1796  111    -    -    -    65.92
+  A5: 5.308    1   11   80  556 2277 1929  183    3    -    -    52.26
+
+===============================
+ YET ANOTHER RUN (15-Jun-2010)
+===============================
+
+Game Settings
+---------------
+  Codeword length:  4
+  Number of digits: 10
+  Allow repetition: no
+
+Algorithm Descriptions
+------------------------
+  A1: guesses the first possibility
+  A2: minimizes the expected number of possibilities
+  A3: minimizes the worst-case number of possibilities
+  A4: minimizes the expected number of guesses (entropy method)
+  A5: maximizes the number of partitions after a guess
+
+Frequency Table
+-----------------
+  ##:   Avg    1    2    3    4    5    6    7    8    9   >9     Time(s)
+  A1: 5.560    1   13  108  596 1668 1768  752  129    5    -     0.45 (simple)
+  A2: 5.268    1    4   59  574 2430 1885   87    -    -    -    23.51 (min avg)
+  A3: 5.385    1    3   44  515 2124 2151  202    -    -    -    23.83 (min max)
+  A4: 5.265    1    4   53  560 2515 1796  111    -    -    -    37.50 (entropy)
+  A5: 5.308    1   11   80  556 2277 1929  183    3    -    -    29.75 (max parts)
+
+$$$$$$$$$$$$$$$$$$$$
+ MASTERMIND RESULTS
+$$$$$$$$$$$$$$$$$$$$
+
+Game Settings
+---------------
+  Codeword length:  4
+  Number of digits: 6
+  Allow repetition: yes
+
+Algorithm Descriptions
+------------------------
+  A1: guesses the first possibility
+  A2: minimizes the worst-case number of possibilities
+  A3: minimizes the expected number of possibilities
+  A4: minimizes the expected number of guesses (entropy method)
+  A5: maximizes the number of partitions after a guess
+
+Frequency Table
+-----------------
+  ##:   Avg    1    2    3    4    5    6    7    8    9   >9     Time(s)
+  A1: 5.765    1    4   25  108  305  602  196   49    6    -     0.06
+  A2: 4.476    1    6   62  533  694    -    -    -    -    -    27.29
+  A3: 4.395    1   10   54  645  583    3    -    -    -    -    26.13
+  A4: 4.424    1    4   70  611  590   20    -    -    -    -    31.55
+  A5: 4.373    1   12   72  635  569    7    -    -    -    -    26.91
+
+===========================
+ ANOTHER RUN (15-Jun-2010)
+===========================
+
+Game Settings
+---------------
+  Codeword length:  4
+  Number of digits: 6
+  Allow repetition: yes
+
+Algorithm Descriptions
+------------------------
+  A1: guesses the first possibility
+  A2: minimizes the expected number of possibilities
+  A3: minimizes the worst-case number of possibilities
+  A4: minimizes the expected number of guesses (entropy method)
+  A5: maximizes the number of partitions after a guess
+
+Frequency Table
+-----------------
+  ##:   Avg    1    2    3    4    5    6    7    8    9   >9     Time(s)
+  A1: 5.765    1    4   25  108  305  602  196   49    6    -     0.08 (simple)
+  A2: 4.395    1   10   54  645  583    3    -    -    -    -    21.79 (min avg)
+  A3: 4.476    1    6   62  533  694    -    -    -    -    -    22.44 (min max)
+  A4: 4.424    1    4   70  611  590   20    -    -    -    -    25.55 (entropy)
+  A5: 4.373    1   12   72  635  569    7    -    -    -    -    22.08 (max parts)
+
+[Intel processor takes less than 1 second for each.]
+
+=====================
+ LOGIK (16-Jun-2010)
+=====================
+
+Game Settings
+---------------
+  Codeword length:     5
+  Number of digits:    8
+  Allow repetition:    yes
+  Number of codewords: 32768
+
+Algorithm Descriptions
+------------------------
+  A1: guesses the first possibility
+  A2: minimizes the expected number of possibilities
+  A3: minimizes the worst-case number of possibilities
+  A4: minimizes the expected number of guesses (entropy method)
+  A5: maximizes the number of partitions after a guess
+
+Frequency Table
+-----------------
+  ##:   Avg    1    2    3    4    5    6    7    8    9   >9     Time(s)
+  A1: 7.633    1    5   43  278 1240 3515 7564 14086 4614 1422     0.09  (simple)
+  A2: 5.502    1    8  105 1477 13803 16585  789    -    -    -    80.38 (min avg)
+  A3: 5.616    1    5   79 1369 11341 18226 1747    -    -    -    78.06 (min max)
+  A4: 5.500    1    9  103 1515 14073 16006 1060    1    -    -   107.60 (entropy)
+  A5: 5.549    1   14  163 1424 12882 16787 1488    9    -    -    66.83 (max parts)
+
+[Intel processor is twice faster.]
+
+==================
+ 3 Pegs, 6 Colors
+==================
+
+Game Settings
+---------------
+  Codeword length:     3
+  Number of digits:    6
+  Allow repetition:    yes
+  Number of codewords: 216
+
+Frequency Table
+-----------------
+  Strategy:   Avg    1    2    3    4    5    6    7    8    9   >9     Time(s)
+    simple: 5.259    1    3   12   35   58   88   17    2    -    -     0.00
+   min_avg: 3.977    1    5   35  132   43    -    -    -    -    -     0.04
+   min_max: 4.046    1    2   37  122   54    -    -    -    -    -     0.02
+   entropy: 4.019    1    6   24  142   43    -    -    -    -    -     0.03
+ max_parts: 3.977    1    6   33  133   43    -    -    -    -    -     0.02
+
+=========================================
+ Optimal Code Breaker Recursion Analysis
+=========================================
+
+----------------------------------------------
+ 3 pegs, 6 colors (0.5 seconds) [07-Aug-2010]
+----------------------------------------------
+
+Recursion level  0: 1
+Recursion level  1: 8
+Recursion level  2: 904
+Recursion level  3: 61809
+Recursion level  4: 563145
+Recursion level  5: 1173918
+Recursion level  6: 560400
+
+[The maximum steps is 5 steps, so 74% of the recursion is wasted.]
+[Useful time is 0.125 seconds]
+
+----------------------------------------------
+ 3 pegs, 7 colors (330 seconds) [07-Aug-2010]
+----------------------------------------------
+
+Recursion level  0: 1
+Recursion level  1: 8
+Recursion level  2: 941
+Recursion level  3: 149283
+Recursion level  4: 5206518
+Recursion level  5: 58553256
+Recursion level  6: 314459436
+Recursion level  7: 836262048
+Recursion level  8: 784493784
+Recursion level  9: 360330336
+
+[The maximum steps is 5 steps, so 99.7% of the recursion is wasteful.]
+[Useful time is 0.75 seconds]
+
+**** Severl improvements possible ****
+- Put an upper-bound of allowed nodes to generate
+- Breadth-first-search when not many possibilities left
+- Sort guesses by score; try good guesses first
+- Sort partitions by size; search small partitions first to lower the upper-bound
+
+----------------------------------------------
+ 3 pegs, 6 colors (0.1 seconds) [08-Aug-2010]
+----------------------------------------------
+
+optimal:   436 3.633    1    6   33   76    4    -    -    -    -    -    0.1
+
+==== Round Statistics ====
+Round  1: 1
+Round  2: 8
+Round  3: 816
+Round  4: 47236
+Round  5: 182958
+Round  6: 76188
+
+----------------------------------------------
+ 3 pegs, 7 colors (290 seconds) [08-Aug-2010]
+----------------------------------------------
+
+ optimal:   836 3.981    1    4   37  124   44    -    -    -    -    -  287.2
+
+Round  1: 1
+Round  2: 8
+Round  3: 938
+Round  4: 147045
+Round  5: 4811530
+Round  6: 48031281
+Round  7: 246306720
+Round  8: 612998424
+Round  9: 500357568
+Round 10: 192225744
+
+==== Lower Bound Statistics ====
+Lower bound   793: 1
+Lower bound   796: 7
+Lower bound   798: 141
+Lower bound   799: 961
+Lower bound   800: 12566
+Lower bound   801: 54982
+Lower bound   802: 127151
+Lower bound   803: 182159
+Lower bound   804: 275344
+Lower bound   805: 347704
+Lower bound   806: 468052
+Lower bound   807: 1119483
+Lower bound   808: 1198956
+Lower bound   809: 2027982
+Lower bound   810: 2539041
+Lower bound   811: 2823462
+Lower bound   812: 3127402
+Lower bound   813: 4299001
+Lower bound   814: 4673110
+Lower bound   815: 5423446
+Lower bound   816: 8643769
+Lower bound   817: 10131682
+Lower bound   818: 8852413
+Lower bound   819: 10053598
+Lower bound   820: 11876604
+Lower bound   821: 15157394
+Lower bound   822: 16278276
+Lower bound   823: 21685322
+Lower bound   824: 25897037
+Lower bound   825: 28608189
+Lower bound   826: 34109481
+Lower bound   827: 33043929
+Lower bound   828: 33681676
+Lower bound   829: 38218117
+Lower bound   830: 39250706
+Lower bound   831: 58555255
+Lower bound   832: 67779009
+Lower bound   833: 59313006
+Lower bound   834: 66474921
+Lower bound   835: 70504677
+Lower bound   836: 71472658
+Lower bound   837: 80951409
+Lower bound   838: 85725817
+Lower bound   839: 74710643
+Lower bound   840: 83244971
+Lower bound   841: 90571479
+Lower bound   842: 83631831
+Lower bound   843: 90355736
+Lower bound   844: 82081716
+Lower bound   845: 73967217
+Lower bound   846: 67285375
+Lower bound   847: 21004136
+Lower bound   848: 10052949
+Lower bound   849: 2591665
+Lower bound   850: 317226
+Lower bound   851: 67667
+Lower bound   852: 20493
+Lower bound   853: 7092
+Lower bound   854: 2963
+Lower bound   855: 48
+Lower bound   856: 96
+Lower bound   857: 12
+Lower bound   859: 12
+Lower bound   860: 6
+Lower bound   861: 6
+Lower bound   865: 6
+Lower bound   872: 6
+Lower bound   877: 12

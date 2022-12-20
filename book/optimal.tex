@@ -1,0 +1,98 @@
+\chapter{Optimal Strategies}
+
+After examining a variety of heuristic strategies that perform variably under different configuration of rules, a natural question arise: for a given set of rules, does there exist an \emph{optimal} strategy? The answer is ``yes''. In this chapter, we will explore several techniques that enable us to find such a strategy.
+
+\section{Overview}
+
+An \emph{optimal strategy} is a strategy that achieves a certain objective in an optimal manner. In this chapter, we will focus on the following three objectives, in order of  strength of optimality:\footnote{In each objective presented, we could replace ``reveal'' with ``determine'', which are subtly different from an information perspective (see 2.4). The overall methodology remains the same. Therefore in this chapter we will focus on strategies that aim to reveal the secret.}
+
+\emph{Min-Steps} objective. To minimize the average number of guesses needed to reveal a secret, assuming each codeword is equally likely to be the secret. This is equivalent to minimizing the total number of guesses needed to reveal all secrets.
+
+\emph{Min-Depth} objective. Subject to being optimal in \emph{Min-Steps} sense, also minimize the maximum number of guesses required to reveal any single secret.
+
+\emph{Min-Worst} objective. Subject to being optimal in \emph{Min-Depth} sense, also minimize the number of secrets that are revealed using the maximum number of guesses.
+
+Note that there may be other objectives for a strategy, such as minimizing the number of guesses evaluated. See, for example, Temporel and Kovacs (2003). However, those objectives are not studied in this chapter.
+
+Optionally, additional constraints could be enforced for an optimal strategy. Commonly used constraints include:
+
+\emph{Max-Depth} constraint. This constraint limits the maximum number of guesses allowed to reveal any single secret. For certain configuration of rules, this constraint does have a meaningful impact on the result. See Koyama(93) for an example.
+
+\emph{Possibility-Only} constraint. This constraint requires all guesses to be made from the remaining possibilities. This significantly reduces the complexity of searching at the cost of yielding sub-optimal solutions, and was employed in 1980's when computation power was limited. For example, see \cite{neuwirth81}.
+
+The theory to find an optimal strategy is simple. Since the number of possible secrets as well as sequence of (non-redundant) guesses are finite, the code breaker can employ an exhaustive search to find out the optimal guessing strategy. However, the scale of the problem is very big and many optimization techniques are required to achieve an efficient (or even feasible) implementation. These technique are discussed in this chapter.
+
+[could copy Neuwirth's illustration of finding an optimal strategy]
+
+[show the search scale of the problem]
+
+[show that an optimal strategy is not unique]
+
+\section{Obvious Guesses}
+
+Some definitions. Partitions, feedback count, etc.
+
+
+While finding an optimal strategy for the general game is complex, in certain cases it's easy. For example, when there's only one possibility left, we should guess it. When there are only two possibilities left, we should guess (either) one of them. [these appear in Neuwirth 82]. When there are more than two possibilities, it's still possible.
+
+An obviously-optimal guess is an optimal guess that doesn't require too much effort to identify. Depending on the techniques used to identify such, the "obvious"-ty could vary. Here we use the technique introduced by \cite{koyama93}. 
+
+[Definition.] An obviously-optimal guess is a guess that partitions the remaining possibilities into discrete cells, i.e.\ where every cell contains exactly one element. 
+
+If such a guess exists and comes from the possibility set, then it is optimal because it reveals one potential secret (itself) in the immediate step and reveals all the other potential secrets in two steps. It is easy to see that no other strategy could do better. If no such guess exists in the possibility set but one exists outside the possibility set, then that one is optimal because it reveals all secrets in two steps. 
+
+Note that an obviously-optimal guess is fairly generic about the goal -- it is optimal both in terms of the worst-case number of steps and the expected number of steps to determine or reveal the secret.
+
+A necessary condition for an obviously-optimal guess to exist is that the number of remaining possibilities does not exceed the number of distinct feedbacks. For a game with $p$ pegs, the number of distinct feedbacks is $p(p+3)/2$. For example, in a four-peg game, there can be at most 14 secrets left for an obviously-optimal guess to exist. This is a useful check in practice to reduce unnecessary efforts to search for an obviously optimal guess.
+
+Note also that in practice we may only want to check in the remaining possibilities (so that the effort is minimized). In turns out that if we check outside the remaining possibilities, it is equivalent to a full-run of a heuristic function, as we show below.
+
+It turns out (not so surprisingly) that the heuristics introduced in the previous chapter will yield an obviously-optimal guess when one exists. We only need to show that the partition of an obviously-optimal guess (which we will call an \emph{obviously optimal partition} and denote by $Q$ below) achieves the lowest possible heuristic value.
+
+Let $P$ denote any given partition. Let $k$ denote the number of (non-empty) cells in $P$. Let $n_i$ denote the number of elements in the $i$-th cell. Let $n = \sum_{i=1}^k$ denote the total number of elements, which is invariant across different $P$. Finally, let $Q$ denote the partition of an obviously-optimal guess, i.e. one with all singleton cells.
+
+\paragraph{Min-Max} 
+The \minmax{} heuristic value of an obviously optimal partition is one. This is the minimum value of the heuristic function.
+\[
+h(P) = \max_{1 \le i \le n} n_i \ge 1 = h(Q).
+\]
+
+\paragraph{Min-Avg}
+The \minavg{} heuristic value of an obviously optimal partition is one. This is the minimum value of the function.
+\[
+h(P) = \sum_{i=1}^k \frac{n_i}{n} n_i \ge \min_{1 \le i \le k} n_i \ge 1 = h(Q).
+\]
+
+\paragraph{Max-Entropy}
+The \maxent{} heuristic value of an obviously optimal partition is ?. This is the maximum value of the function.
+\[
+h(P) = - \sum_{i=1}^k \frac{n_i}{n} \log \frac{n_i}{n} = ?
+\]
+
+\paragraph{Max-Parts}
+The \maxpar{} heuristic value of an obviously optimal partition is $n$. This is the maximum value of the function.
+\[
+h(P) = k \le n = h(Q).
+\]
+
+Since all four heuristics introduced yield an obviously optimal guess when one exists, we can insert the step to find an optimal guess into the strategy as a shortcut to save computation time, knowing that this will not alter the output of the heuristic strategy.
+
+\section{Less Obvious Guesses}
+
+
+
+\section{Search space pruning}
+
+Two techniques are important in reducing the search space: visit candidate guesses in order of their lower bound, and visit partitions in order of their size.
+
+\section{Other techniques}
+
+(e.g. two-phase optimization, hash collision group)
+
+\section{Using a pre-built strategy tree}
+
+\section{Extended/Adaptive strategy tree}
+
+i.e. the tree not only contains guesses along the chosen strategy path, but also includes guesses if the user made a non-optimal guess halfway. The tree size in this case is much larger, and we must use isomorphism to detect the symmetry.
+
+ 

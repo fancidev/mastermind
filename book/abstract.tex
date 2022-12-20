@@ -1,0 +1,17 @@
+\begin{abstract}
+
+This document provides a systematic review of the main strategies for playing the Mastermind game and some of its variants, including the well-studied Bulls and Cows game. Extensive literature review is conducted and a sample program is provided at the end.
+
+Chapter 1 gives an overview of the Mastermind game and its strategies. Basic concepts and properties about the game are formalized such as a strategy tree. At the end of the chapter, the (standard) notations used to represent a strategy tree in literature is introduced.
+
+Chapter 2 describes several heuristic strategies, including \minmax{}, \minavg{}, \maxent{} and \maxpar{}. The rationale of each heuristic as well as their performance and limitations are analyzed. At the end of the chapter lists a few minor heuristics together with a comparison of their performance under common settings of game.
+
+Chapter 3 discusses the techniques that are commonly employed to search for an optimal strategy. Of main importance are guess equivalence detection and Alpha-Beta pruning. We introduce three types of equivalence criteria varying in degree of complexity and performance. [We (will) also discuss pruning.]
+
+Chapter 4 provides an overview of randomized strategies aimed at solving large-scale games efficiently. The need for a randomized strategy is justified by the fact that the Mastermind Satisfiability Problem is NP-complete. [To be completed]
+
+Chapter 5 introduces a few variants of the game and discusses the corresponding strategies. Static Mastermind is a game where all the guesses are made all at once. Dynamic Mastermind is where the code-maker can silently change the secret during the course of the game. Finally, Mastermind with a lie is where at most one of the response can be fake.
+
+Chapter 6 details a computer program implementation of the strategies discussed above.
+
+\end{abstract}
