@@ -1,5 +1,4 @@
-#include "rules.hpp"
-#include "feedback.hpp"
+#include "codeword.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -30,7 +29,7 @@ int main(int argc, const char *argv[])
                 return usage("option -r requires an argument");
             try
             {
-                std::istringstream(val) >> rules;
+                rules = mastermind::Rules::from_str(val);
             }
             catch (const std::invalid_argument &ex)
             {
@@ -39,9 +38,9 @@ int main(int argc, const char *argv[])
         }
     }
 
-    std::cout << "Using rules " << rules << " with "
+    std::cout << "Using rules " << rules.to_str() << " with "
         << rules.population_size() << " admissible codewords" << std::endl;
-    std::cout << "Perfect match is " << mastermind::Feedback::perfect_match(rules)
-        << std::endl;
+    std::cout << "Perfect match is "
+        << mastermind::Feedback::perfect_match(rules).to_str() << std::endl;
     return 0;
 }
