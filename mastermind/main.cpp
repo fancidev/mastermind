@@ -1,4 +1,5 @@
 #include "rules.hpp"
+#include "feedback.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -39,6 +40,8 @@ int main(int argc, const char *argv[])
     }
 
     std::cout << "Using rules " << rules << " with "
-        << rules.num_admissible() << " admissible codewords" << std::endl;
+        << rules.population_size() << " admissible codewords" << std::endl;
+    std::cout << "Perfect match is " << mastermind::Feedback::perfect_match(rules)
+        << std::endl;
     return 0;
 }

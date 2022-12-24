@@ -32,7 +32,7 @@
 
 namespace mastermind
 {
-    /// Defines the rules of a game.
+    /// Defines a set of rules that codewords must conform to.
     class Rules
     {
         /// Number of pegs in the game.
@@ -78,11 +78,11 @@ namespace mastermind
         /// codeword.
         bool repeatable() const { return _repeatable; }
 
-        /// Returns the number of (distinct) conforming codewords for this
-        /// rule set.  This is equal to `c ** p` for non-repeatable rules
-        /// and `P(c,p) := c*(c-1)*...*(c-p+1)` for repeatable rules (where
-        /// c := num_colors and p := num_pegs).
-        size_t num_admissible() const
+        /// Returns the number of (distinct) codewords that conform to this
+        /// rule set.  This is equal to `num_colors ** num_pegs` for
+        /// non-repeatable rules and `P(num_colors, num_pegs)` for
+        /// repeatable rules, where `P(n, r) := n*(n-1)*...*(n-r+1)`.
+        size_t population_size() const
         {
             size_t n = 1;
             size_t c = _num_colors;
@@ -102,9 +102,8 @@ namespace mastermind
     std::basic_ostream<CharT, Traits> &
     operator <<(std::basic_ostream<CharT, Traits> &os, const Rules &r)
     {
-        os << 'p' << r.num_pegs() << 'c' << r.num_colors()
-           << (r.repeatable()? 'r' : 'n');
-        return os;
+        return os << 'p' << r.num_pegs() << 'c' << r.num_colors()
+                  << (r.repeatable()? 'r' : 'n');
     }
 
     /// Reads rule set `r` from string input, in the form "p4c6r" or "p4c10n",
