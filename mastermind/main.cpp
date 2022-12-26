@@ -15,6 +15,7 @@ static int usage(const char *error)
         << "    -n N   Set number of letters in the alphabet (default: 6)\n"
         << "    -m M   Set number of letters in the secret (default: 4)\n"
         << "    -d     Require any letter in the secret to appear only once\n"
+        << "    -h     display usage and exit\n"
         ;
     return error ? 1 : 0;
 }
@@ -85,6 +86,10 @@ int main(int argc, const char *argv[])
     std::cout << "Population count: " << rules.population_size() << std::endl;
     std::cout << "Perfect match is " << Feedback::perfect_match(rules).a()
         << 'A' << Feedback::perfect_match(rules).b() << 'B' << std::endl;
+
+    const char *alphabet = "1234567890";
+    Codeword guess = Codeword::from_string("1357", alphabet);
+    std::cout << guess.to_string("ABCDEFGHIJ") << std::endl;
 
     return 0;
 }

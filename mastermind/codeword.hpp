@@ -10,11 +10,10 @@
 #include <cstring>
 #include <iterator>
 #include <regex>
+#include <span>
 #include <stdexcept>
 #include <string>
-#include <sstream>
-
-//#include "util/intrinsic.hpp"
+#include <string_view>
 
 // ============================================================================
 // Constants
@@ -330,17 +329,8 @@ public:
 //        return Feedback(a, b);
 //    }
 
-    /// Tests whether two feedbacks are equal.
+    /// Default == and != operators by member comparison.
     constexpr bool operator ==(const Feedback &other) const noexcept = default;
-//    {
-//        return ordinal() == other.ordinal();
-//    }
-//
-//    /// Tests whether two feedbacks are unequal.
-//    bool operator !=(const Feedback &other) const noexcept
-//    {
-//        return ordinal() != other.ordinal();
-//    }
 
 private:
     /// Ordinal of the feedback.
@@ -354,15 +344,40 @@ private:
 class Codeword
 {
 public:
-//    /// Creates an empty codeword.
-//    Codeword()
-//    {
-//        std::memset(_counter, 0, sizeof(_counter));
-//        std::memset(_digit, -1, sizeof(_digit));
-//    }
+      /// Creates a codeword with the given letters.
+    constexpr Codeword(AlphabetSize n,
+                       std::span<AlphabetIndex> letters) noexcept
+      : _position_mask(0), _alphabet_mask(0)
+    {
+        PositionSize m = letters.size();
+        assert(m >= 1 && m <= MAX_CODEWORD_LENGTH);
+        assert(n >= 1 && n <= MAX_ALPHABET_SIZE);
+        assert(m * n <= MAX_CODEWORD_LENGTH * MAX_ALPHABET_SIZE);
 
-//    /// Return `true` if the codeword is empty.
-//    bool IsEmpty() const { return _digit[0] < 0; }
+        uint64_t unity = 0;
+        for (PositionIndex j = 0; j < m; j++)
+        {
+            AlphabetIndex i = letters[j];
+            assert(i >= 0 && i < n);
+
+            _position_mask |= uint64_t(1) << (j * n + i);
+            unity <<= n;
+            unity |= uint64_t(1);
+        }
+
+        for (AlphabetIndex i = 0; i < n; i++)
+        {
+            int times = std::popcount(_position_mask & (unity << i));
+            uint64_t times_mask = (uint64_t(1) << (times * n)) - uint64_t(1);
+            _alphabet_mask |= (unity & times_mask) << i;
+        }
+    }
+
+    /// Returns the length of the codeword (in number of letters).
+    constexpr PositionSize length() const noexcept
+    {
+        return std::popcount(_position_mask);
+    }
 
     /// Gets the letter at the given position.
     constexpr AlphabetIndex get(PositionIndex j, AlphabetSize n) const noexcept
@@ -371,25 +386,14 @@ public:
         return std::countr_zero(_position_mask >> (j * n));
     }
 
-//    /// Sets the color on a given peg.
-//    void set(int peg, int color)
-//    {
-//        assert(peg >= 0 && peg < MM_MAX_PEGS);
-//        assert(color == -1 || (color >= 0 && color < MM_MAX_COLORS));
-//        if (_digit[peg] >= 0)
-//            --_counter[(int)_digit[peg]];
-//        if ((_digit[peg] = (char)color) >= 0)
-//            ++_counter[color];
-//    }
-
     /// Returns the number of occurrence of the given letter.
-    constexpr size_t get_frequency(AlphabetSize i,
+    constexpr size_t get_frequency(AlphabetIndex i,
                                    AlphabetSize n) const noexcept
     {
         assert(i >= 0 && i < n);
         size_t frequency = 0;
         uint64_t mask = _alphabet_mask >> i;
-        while (mask & 1)
+        while (mask & uint64_t(1))
         {
             frequency++;
             mask >>= n;
@@ -404,8 +408,62 @@ public:
         return (_alphabet_mask >> n) == 0;
     }
 
-    /// Tests whether two codewords are equal.
+    std::string to_string(std::string_view alphabet) const
+    {
+        const AlphabetSize n = alphabet.size();
+        const PositionSize m = length();
+        std::string s(m, '\0');
+        for (PositionIndex j = 0; j < m; j++)
+            s[j] = alphabet[get(j, n)];
+        return s;
+    }
+
+    static constexpr Codeword from_string(std::string_view s,
+                                          std::string_view alphabet)
+    {
+        if (!(s.size() > 0))
+            throw std::invalid_argument("codeword must not be empty");
+        if (!(s.size() <= MAX_CODEWORD_LENGTH))
+            throw std::invalid_argument("codeword length must not exceed "
+                                        STRINGIFY(MAX_CODEWORD_LENGTH));
+        const PositionSize m = s.size();
+
+        if (!(alphabet.size() > 0))
+            throw std::invalid_argument("alphabet must not be empty");
+        if (!(alphabet.size() <= MAX_ALPHABET_SIZE))
+            throw std::invalid_argument("alphabet size must not exceed "
+                                        STRINGIFY(MAX_ALPHABET_SIZE));
+        const AlphabetSize n = alphabet.size();
+
+        if (!(n * m <= MAX_ALPHABET_SIZE_X_POSITION_LENGTH))
+            throw std::invalid_argument(
+                "codeword length times alphabet size must not exceed "
+                STRINGIFY(MAX_ALPHABET_SIZE_X_POSITION_LENGTH));
+
+        std::array<AlphabetIndex, MAX_CODEWORD_LENGTH> letters;
+        for (PositionIndex j = 0; j < m; j++)
+        {
+            size_t i = alphabet.find(s[j]);
+            if (i == std::string::npos)
+                throw std::invalid_argument("codeword contains letters "
+                                            "not in the alphabet");
+            letters[j] = static_cast<AlphabetIndex>(i);
+        }
+        return Codeword(n, std::span<AlphabetIndex>(letters).first(m));
+    }
+
+    /// Default == and != operators by member comparison.
     constexpr bool operator ==(const Codeword &other) const noexcept = default;
+
+    /// Compares two codewords and returns the feedback.
+    friend constexpr Feedback compare(const Codeword &x,
+                                      const Codeword &y) noexcept
+    {
+        int ab = std::popcount(x._alphabet_mask & y._alphabet_mask);
+        int a = std::popcount(x._position_mask & y._position_mask);
+        int ordinal = (ab+1)*ab/2+a;
+        return Feedback(static_cast<Feedback::ordinal_type>(ordinal));
+    }
 
 private:
     /// Bitset consisting of M groups of N bits, where bit i in group j
