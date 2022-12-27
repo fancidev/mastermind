@@ -11,6 +11,7 @@
 #include <iterator>
 #include <regex>
 #include <span>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -20,8 +21,8 @@
 // ============================================================================
 
 /// Maximum supported alphabet size times codeword length.  This is a hard
-/// limited imposed by the internal storage format of the Codeword class.
-#define MAX_ALPHABET_SIZE_X_POSITION_LENGTH 64
+/// limit imposed by the internal storage format of the Codeword class.
+#define MAX_ALPHABET_SIZE_X_CODEWORD_LENGTH 64
 
 /// Maximum number of letters supported in the alphabet.  This is a soft
 /// limit that restricts the solver to practical problem scale.
@@ -72,7 +73,7 @@ constexpr const char *to_string(const CodewordStructure &structure) noexcept
 }
 
 /// Defines a set of rules that the secret codeword conforms to.
-class CodewordRules
+class CodewordRules // TODO: rename to CodewordFormat? CodewordForm?
 {
     /// Number of letters in the alphabet.
     uint8_t _alphabet_size;
@@ -132,6 +133,7 @@ public:
         return _structure;
     }
 
+    // TODO: move to COdewordPopulation class
     /// Returns the number of codewords that conform to this set of rules.
     /// This is equal to `alphabet_size ** codeword_length` for general
     /// codewords, and `P(alphabet_size, codeword_length)` for heterograms,
@@ -176,8 +178,9 @@ public:
 //    }
 };
 
-/// Generates the mapping from feedback ordinal to feedback outcome (a, b)
-/// for codewords of length M.  Used by the Feedback class.
+/// Helper function used by the Feedback class to generate the mapping
+/// from feedback ordinals to feedback outcomes (a, b) for codewords of
+/// length M.
 template <size_t M>
 static constexpr std::array<std::pair<size_t, size_t>, (M+1)*(M+2)/2>
 generate_outcomes() noexcept
@@ -305,15 +308,17 @@ public:
         return Feedback(rules.codeword_length(), 0);
     }
 
-//    /// Returns the string representation of the feedback in the form
-//    /// "1A2B".
-//    std::string to_str() const
-//    {
-//        std::ostringstream os;
-//        os << a() << 'A' << b() << 'B';
-//        return os.str();
-//    }
-//
+    /// Returns the string representation of the feedback in the form "1A2B".
+    template <class CharT = char,
+              class Traits = std::char_traits<CharT>,
+              class Allocator = std::allocator<CharT>>
+    std::basic_string<CharT, Traits, Allocator> to_string() const
+    {
+        std::basic_ostringstream<CharT, Traits, Allocator> os;
+        os << a() << 'A' << b() << 'B';
+        return os.str();
+    }
+
 //    /// Creates a feedback from an input string in the form "1A2B".
 //    /// Throws std::invalid_argument if the string is malformed, or
 //    /// if the resulting feedback is formally invalid.
@@ -329,8 +334,8 @@ public:
 //        return Feedback(a, b);
 //    }
 
-    /// Default == and != operators by member comparison.
-    constexpr bool operator ==(const Feedback &other) const noexcept = default;
+    /// Default comparison operators by member comparison.
+    constexpr bool operator <=>(const Feedback &other) const noexcept = default;
 
 private:
     /// Ordinal of the feedback.
@@ -352,7 +357,7 @@ public:
         PositionSize m = letters.size();
         assert(m >= 1 && m <= MAX_CODEWORD_LENGTH);
         assert(n >= 1 && n <= MAX_ALPHABET_SIZE);
-        assert(m * n <= MAX_CODEWORD_LENGTH * MAX_ALPHABET_SIZE);
+        assert(m * n <= MAX_ALPHABET_SIZE_X_CODEWORD_LENGTH);
 
         uint64_t unity = 0;
         for (PositionIndex j = 0; j < m; j++)
@@ -408,6 +413,20 @@ public:
         return (_alphabet_mask >> n) == 0;
     }
 
+//    template <class CharT,
+//              class Traits = std::char_traits<CharT>,
+//              class Allocator = std::allocator<CharT>>
+//    std::basic_string<CharT, Traits, Allocator>
+//    to_string(std::basic_string_view<CharT, Traits> alphabet) const
+//    {
+//        const AlphabetSize n = alphabet.size();
+//        const PositionSize m = length();
+//        std::basic_string<CharT, Traits, Allocator> s(m, CharT(0));
+//        for (PositionIndex j = 0; j < m; j++)
+//            s[j] = alphabet[get(j, n)];
+//        return s;
+//    }
+
     std::string to_string(std::string_view alphabet) const
     {
         const AlphabetSize n = alphabet.size();
@@ -435,10 +454,10 @@ public:
                                         STRINGIFY(MAX_ALPHABET_SIZE));
         const AlphabetSize n = alphabet.size();
 
-        if (!(n * m <= MAX_ALPHABET_SIZE_X_POSITION_LENGTH))
+        if (!(n * m <= MAX_ALPHABET_SIZE_X_CODEWORD_LENGTH))
             throw std::invalid_argument(
                 "codeword length times alphabet size must not exceed "
-                STRINGIFY(MAX_ALPHABET_SIZE_X_POSITION_LENGTH));
+                STRINGIFY(MAX_ALPHABET_SIZE_X_CODEWORD_LENGTH));
 
         std::array<AlphabetIndex, MAX_CODEWORD_LENGTH> letters;
         for (PositionIndex j = 0; j < m; j++)

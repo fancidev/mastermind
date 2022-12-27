@@ -84,12 +84,15 @@ int main(int argc, const char *argv[])
     std::cout << "  Structure: " << to_string(rules.structure()) <<  std::endl;
 
     std::cout << "Population count: " << rules.population_size() << std::endl;
-    std::cout << "Perfect match is " << Feedback::perfect_match(rules).a()
-        << 'A' << Feedback::perfect_match(rules).b() << 'B' << std::endl;
+    std::cout << "Perfect match is " <<
+        Feedback::perfect_match(rules).to_string() << std::endl;
 
     const char *alphabet = "1234567890";
     Codeword guess = Codeword::from_string("1357", alphabet);
-    std::cout << guess.to_string("ABCDEFGHIJ") << std::endl;
+    Codeword secret = Codeword::from_string("2337", alphabet);
+    std::cout << "compare(" << guess.to_string("ABCDEFGHIJ") << ", "
+        << secret.to_string("ABCDEFGHIJ") << ") = "
+        << compare(guess, secret).to_string() << std::endl;
 
     return 0;
 }
