@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iterator>
+#include <numeric>
 #include <regex>
 #include <span>
 #include <sstream>
@@ -133,24 +134,6 @@ public:
         return _structure;
     }
 
-    // TODO: move to COdewordPopulation class
-    /// Returns the number of codewords that conform to this set of rules.
-    /// This is equal to `alphabet_size ** codeword_length` for general
-    /// codewords, and `P(alphabet_size, codeword_length)` for heterograms,
-    /// where `P(n, m) := n*(n-1)*...*(n-m+1)`.
-    constexpr size_t population_size() const noexcept
-    {
-        size_t count = 1;
-        size_t n = _alphabet_size;
-        for (PositionIndex j = 0; j < _codeword_length; j++)
-        {
-            count *= n;
-            if (_structure == CodewordStructure::Heterogram)
-                --n;
-        }
-        return count;
-    }
-//
 //    /// Returns the string representation of the rule set in the form
 //    /// "p4c6r" or "p4c10n".
 //    std::string to_str() const
@@ -494,6 +477,92 @@ private:
     /// is set if the i-th letter in the alphabet occurs at least (j + 1)
     /// times in the codeword.  (N := alphabet_size, M := codeword_length)
     uint64_t _alphabet_mask;
+};
+
+/// Returns a vector v with (m + 1) elements (m := codeword length), where
+/// v[j] := the size of the sub-population where the first j letters in the
+/// codeword are fixed.
+template <size_t M>
+constexpr std::array<size_t, M + 1>
+sub_population_sizes(const CodewordRules &rules) noexcept
+{
+    std::array<size_t, M + 1> sizes {};
+    size_t count = 1;
+    const size_t n = rules.alphabet_size();
+    const size_t m = rules.codeword_length();
+    for (PositionIndex j = m; j > 0; --j)
+    {
+        sizes[j] = count;
+        if (rules.structure() == CodewordStructure::Heterogram)
+            count *= (n - j + 1);
+        else
+            count *= n;
+    }
+    sizes[0] = count;
+    return sizes;
+}
+
+/// Represents the collection of all codewords conforming to a given rule set.
+class CodewordPopulation
+{
+public:
+    /// Creates the population from the given rules.
+    constexpr CodewordPopulation(const CodewordRules &rules) noexcept
+      : _rules(rules),
+        _sub_population_sizes(sub_population_sizes<MAX_CODEWORD_LENGTH>(rules))
+    {
+    }
+
+    /// Returns the rules that the population of codewords conform to.
+    constexpr const CodewordRules &rules() const noexcept { return _rules; }
+
+    /// Returns the number of (distinct) codewords in the population.
+    /// (Note: The empty codeword is the unique codeword of length zero.)
+    constexpr size_t size() const noexcept { return _sub_population_sizes[0]; }
+
+    /// Returns the codeword at the given index in the population in
+    /// lexicographical order.
+    constexpr Codeword get(size_t index) const noexcept
+    {
+        assert(index >= 0 && index < size());
+        const size_t n = _rules.alphabet_size();
+        const size_t m = _rules.codeword_length();
+
+        std::array<AlphabetIndex, MAX_CODEWORD_LENGTH> letters {};
+        if (_rules.structure() == CodewordStructure::Heterogram)
+        {
+            std::array<AlphabetIndex, MAX_ALPHABET_SIZE> alphabet {};
+            std::iota(alphabet.begin(), alphabet.end(), AlphabetIndex(0));
+            for (PositionIndex j = 0; j < m; j++)
+            {
+                size_t i = index / _sub_population_sizes[j + 1];
+                letters[j] = alphabet[i];
+                std::copy(alphabet.cbegin() + i + 1,
+                          alphabet.cbegin() + n - j,
+                          alphabet.begin() + i);
+                index %= _sub_population_sizes[j + 1];
+            }
+        }
+        else
+        {
+            for (PositionIndex j = 0; j < m; j++)
+            {
+                size_t i = index / _sub_population_sizes[j + 1];
+                letters[j] = static_cast<AlphabetIndex>(i);
+                index %= _sub_population_sizes[j + 1];
+            }
+        }
+        return Codeword(n, std::span<AlphabetIndex>(letters).first(m));
+    }
+
+private:
+    /// Rule set that all codewords in the population conform to.
+    CodewordRules _rules;
+
+    /// Vector with (m + 1) elements (m := codeword length), where element j
+    /// denotes the size of the sub-population where the first j letters of
+    /// a codeword are fixed.
+    std::array<size_t, MAX_CODEWORD_LENGTH + 1> _sub_population_sizes;
 };
 
 } // namespace mastermind
