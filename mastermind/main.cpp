@@ -10,13 +10,13 @@ static int usage(const char *error)
 {
     if (error)
         std::cerr << "error: " << error << std::endl;
-    std::cerr
-        << "usage: mastermind [options]\n"
-        << "Options:\n"
-        << "    -n N   Set number of letters in the alphabet (default: 6)\n"
-        << "    -m M   Set number of letters in the secret (default: 4)\n"
-        << "    -d     Require any letter in the secret to appear only once\n"
-        << "    -h     display usage and exit\n"
+    std::cerr <<
+        "usage: mastermind [options]\n"
+        "Options:\n"
+        "    -d      require any letter in codeword to appear only once\n"
+        "    -h      display this help text and exit\n"
+        "    -m M    number of letters in codeword (default: 4)\n"
+        "    -n N    number of letters in alphabet (default: 6)\n"
         ;
     return error ? 1 : 0;
 }
@@ -29,16 +29,55 @@ static size_t get_random_index(size_t count)
     return distribution(engine);
 }
 
+static void play(const mastermind::CodewordRules &rules)
+{
+    using namespace mastermind;
+
+    CodewordPopulation population(rules);
+    // TODO: check rules with no admissible codewords
+
+    const Codeword secret = population.get(get_random_index(population.size()));
+
+    for (int round = 1; ; ++round)
+    {
+        std::cout << "Guess #" << round << "> ";
+        std::cout.flush();
+
+        std::string s;
+        std::cin >> s;
+        Codeword guess = population.get(0);
+        try
+        {
+            guess = Codeword::from_string(s, rules);
+        }
+        catch (const std::invalid_argument &ex)
+        {
+            std::cerr << "error: " << ex.what() << std::endl;
+            --round;
+            continue;
+        }
+
+        const Feedback response = compare(guess, secret);
+        std::cout << "Score #" << round << ": " << response << std::endl;
+        if (response == Feedback::perfect_match(rules))
+            break;
+    }
+}
+
 int main(int argc, const char *argv[])
 {
     using namespace mastermind;
 
     CodewordRules rules;
-    AlphabetSize n = rules.alphabet_size();
+
+    std::string alphabet(rules.alphabet());
     PositionSize m = rules.codeword_length();
     CodewordStructure structure = rules.structure();
 
-    const std::string options_requring_argument = "nm";
+    //play(rules);
+    //return 0;
+
+    const std::string options_requring_argument = "mn";
 
     // Parse command line arguments.
     for (int i = 1; i < argc; i++)
@@ -71,41 +110,44 @@ int main(int argc, const char *argv[])
                 m = std::atoi(val);
                 break;
             case 'n':
-                n = std::atoi(val);
+            {
+                int n = std::atoi(val);
+                if (!(n >= 0 && n <= MAX_ALPHABET_SIZE))
+                    return usage("alphabet size out of range");
+                static_assert(MAX_ALPHABET_SIZE <= 10, "not supported");
+                alphabet = std::string("1234567890").substr(0, n);
                 break;
+            }
             default:
                 return usage("unknown option");
         }
     }
 
-    try
-    {
-        rules = mastermind::CodewordRules(n, m, structure);
-    }
-    catch (const std::invalid_argument &ex)
-    {
-        return usage(ex.what());
-    }
+//    try
+//    {
+//        rules = mastermind::CodewordRules(alphabet, m, structure);
+//    }
+//    catch (const std::invalid_argument &ex)
+//    {
+//        return usage(ex.what());
+//    }
 
     std::cout << "Codeword rules:" << std::endl;
     std::cout << "  Alphabet size: " << rules.alphabet_size() << std::endl;
     std::cout << "  Codeword length: " << rules.codeword_length() << std::endl;
     std::cout << "  Structure: " << to_string(rules.structure()) <<  std::endl;
     std::cout << "Perfect match is " <<
-        Feedback::perfect_match(rules).to_string() << std::endl;
+        Feedback::perfect_match(rules) << std::endl;
 
     CodewordPopulation population(rules);
-    std::string alpha("ABCDEFGHIJKLMN");
-    alpha = alpha.substr(0, rules.alphabet_size());
     std::cout << "Population size: " << population.size() << std::endl;
     std::cout << "Random choice: "
-        << population.get(get_random_index(population.size())).to_string(alpha)
-        << std::endl;
+        << population.get(get_random_index(population.size())) << std::endl;
 
     std::cout << "First 5:";
     for (size_t index = 0; index < 5 && index < population.size(); index++)
     {
-        std::cout << " " << population.get(index).to_string(alpha);
+        std::cout << " " << population.get(index);
     }
     std::cout << std::endl;
 
@@ -113,16 +155,15 @@ int main(int argc, const char *argv[])
     for (size_t index = 0; index < 5; index++)
     {
         //if (index + )
-        std::cout << " " << population.get(population.size() - (5 - index)).to_string(alpha);
+        std::cout << " " << population.get(population.size() - (5 - index));
     }
     std::cout << std::endl;
 
-    const char *alphabet = "1234567890";
-    Codeword guess = Codeword::from_string("1357", alphabet);
-    Codeword secret = Codeword::from_string("2337", alphabet);
-    std::cout << "compare(" << guess.to_string("ABCDEFGHIJ") << ", "
-        << secret.to_string("ABCDEFGHIJ") << ") = "
-        << compare(guess, secret).to_string() << std::endl;
+//    Codeword guess = Codeword::from_string("1357", rules);
+//    Codeword secret = Codeword::from_string("2337", rules);
+//    std::cout << "compare(" << guess.to_string("ABCDEFGHIJ") << ", "
+//        << secret.to_string("ABCDEFGHIJ") << ") = "
+//        << compare(guess, secret).to_string() << std::endl;
 
     return 0;
 }
