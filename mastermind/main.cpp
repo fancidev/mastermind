@@ -1,5 +1,6 @@
 #include "codeword.hpp"
 #include "codemaker.hpp"
+#include "codebreaker.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -66,6 +67,26 @@ static void play(const mastermind::CodewordRules &rules)
     }
 }
 
+static void self_play(const mastermind::CodewordRules &rules)
+{
+    using namespace mastermind;
+
+    std::unique_ptr<CodeMaker> maker(create_code_maker(rules));
+    std::unique_ptr<CodeBreaker> breaker(create_simple_code_breaker(rules));
+
+    for (int round = 1; round < 10000; ++round)
+    {
+        Codeword guess = breaker->make_guess();
+        Feedback response = maker->respond(guess);
+
+        std::cout << "#" << round << "  ";
+        std::cout << guess << "  " << response << std::endl;
+        if (response == Feedback::perfect_match(rules))
+            break;
+        breaker->step(guess, response);
+    }
+}
+
 int main(int argc, const char *argv[])
 {
     using namespace mastermind;
@@ -76,7 +97,7 @@ int main(int argc, const char *argv[])
     PositionSize m = rules.codeword_length();
     CodewordStructure structure = rules.structure();
 
-    play(rules);
+    self_play(rules);
     return 0;
 
     const std::string options_requring_argument = "mn";

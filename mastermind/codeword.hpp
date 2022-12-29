@@ -384,9 +384,8 @@ constexpr T cyclic_mask(size_t bits_in_group, size_t num_groups)
 class Codeword
 {
 public:
-//    /// Creates an empty codeword.
-//    constexpr Codeword() noexcept
-//      : Codeword(AlphabetSize(0), std::span<AlphabetIndex>()) {}
+    /// Creates an empty codeword.
+    constexpr Codeword() noexcept : _position_mask(0), _alphabet_mask(0) {}
 
     /// Creates a codeword with the given letters under the given rules.
     ///
