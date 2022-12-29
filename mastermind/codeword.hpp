@@ -80,7 +80,7 @@ constexpr const char *to_string(const CodewordStructure &structure) noexcept
 }
 
 /// Defines a set of rules that secrets and guesses must conform to.
-class CodewordRules // TODO: rename to CodewordFormat? CodewordForm?
+class CodewordRules // TODO: rename to CodewordFormat? CodewordForm? CodewordAttributes?
 {
 public:
     /// Creates a rule set with the given parameters.
@@ -136,7 +136,7 @@ public:
         return _structure;
     }
 
-    /// Returns the alphabet.
+    /// Returns the alphabet from which letters in this codeword are drawn.
     constexpr std::string_view alphabet() const noexcept
     {
         return std::string_view(ALPHABET, _alphabet_size);
@@ -463,6 +463,14 @@ public:
     constexpr bool is_heterogram() const noexcept
     {
         return std::has_single_bit(_alphabet_mask >> alphabet_size());
+    }
+
+    /// Returns true if this codeword conforms to the given rules.
+    constexpr bool conforms_to(const CodewordRules &rules) const noexcept
+    {
+        return (length() == rules.codeword_length())
+            && (alphabet_size() == rules.alphabet_size())
+            && (is_heterogram() || rules.structure() == CodewordStructure::None);
     }
 
 //    template <class CharT,

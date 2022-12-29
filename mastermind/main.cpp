@@ -1,9 +1,9 @@
 #include "codeword.hpp"
+#include "codemaker.hpp"
 
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
-#include <random>
 #include <string>
 
 static int usage(const char *error)
@@ -21,22 +21,11 @@ static int usage(const char *error)
     return error ? 1 : 0;
 }
 
-static size_t get_random_index(size_t count)
-{
-    std::random_device device;
-    std::default_random_engine engine(device());
-    std::uniform_int_distribution<size_t> distribution(0, count - 1);
-    return distribution(engine);
-}
-
 static void play(const mastermind::CodewordRules &rules)
 {
     using namespace mastermind;
 
-    CodewordPopulation population(rules);
-    // TODO: check rules with no admissible codewords
-
-    const Codeword secret = population.get(get_random_index(population.size()));
+    std::unique_ptr<CodeMaker> code_maker(create_code_maker(rules));
 
     for (int round = 1; ; ++round)
     {
@@ -45,7 +34,20 @@ static void play(const mastermind::CodewordRules &rules)
 
         std::string s;
         std::cin >> s;
-        Codeword guess = population.get(0);
+        if (s == "?")
+        {
+            std::optional<Codeword> secret = code_maker->secret();
+            if (secret.has_value())
+                std::cout << "Secret: " << secret.value() << std::endl;
+            else
+                std::cout << "Secret is not available." << std::endl;
+            --round;
+            continue;
+        }
+        if (s == "quit")
+            break;
+
+        Codeword guess = code_maker->secret().value(); // TODO: FIXME
         try
         {
             guess = Codeword::from_string(s, rules);
@@ -57,7 +59,7 @@ static void play(const mastermind::CodewordRules &rules)
             continue;
         }
 
-        const Feedback response = compare(guess, secret);
+        const Feedback response = code_maker->respond(guess);
         std::cout << "Score #" << round << ": " << response << std::endl;
         if (response == Feedback::perfect_match(rules))
             break;
@@ -74,8 +76,8 @@ int main(int argc, const char *argv[])
     PositionSize m = rules.codeword_length();
     CodewordStructure structure = rules.structure();
 
-    //play(rules);
-    //return 0;
+    play(rules);
+    return 0;
 
     const std::string options_requring_argument = "mn";
 
@@ -141,8 +143,6 @@ int main(int argc, const char *argv[])
 
     CodewordPopulation population(rules);
     std::cout << "Population size: " << population.size() << std::endl;
-    std::cout << "Random choice: "
-        << population.get(get_random_index(population.size())) << std::endl;
 
     std::cout << "First 5:";
     for (size_t index = 0; index < 5 && index < population.size(); index++)
