@@ -2,6 +2,7 @@
 
 #include "codeword.hpp"
 #include <memory>
+#include <string_view>
 
 namespace mastermind {
 
@@ -40,5 +41,26 @@ protected:
 /// the lexicographically least.)
 std::unique_ptr<CodeBreaker> create_simple_code_breaker(
     const CodewordRules &rules);
+
+/// Creates a code breaker that picks a guess according to a heuristic score.
+///
+/// For each candidate guess, the set of potential secrets is partitioned
+/// according to their feedback value against this guess.
+///
+/// The size of the partitions (but not their contents) are then passed
+/// to a *heuristic function*, which generates a *score*.  The candidate
+/// with the lowest score is chosen as the next guess.  To break ties, a
+/// candidate that is also admissible (i.e. one that could be the secret)
+/// is preferred over one that is not.  If there are still ties, an
+/// arbitrary one is chosen.
+///
+/// Note: Ideally, the heuristic score should have adequately captured
+/// the information in the partition, such that favoring an admissible
+/// candidate is redundant.  However, in practice this does improve the
+/// result (slightly) in some cases, e.g. "-r bc -s entropy".  It is
+/// also compatible with prior art that had this treatment.
+///
+std::unique_ptr<CodeBreaker> create_heuristic_breaker(
+    const CodewordRules &rules, std::string_view name);
 
 } // namespace mastermind

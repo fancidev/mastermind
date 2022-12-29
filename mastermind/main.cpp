@@ -72,7 +72,9 @@ static void self_play(const mastermind::CodewordRules &rules)
     using namespace mastermind;
 
     std::unique_ptr<CodeMaker> maker(create_code_maker(rules));
-    std::unique_ptr<CodeBreaker> breaker(create_simple_code_breaker(rules));
+    //std::unique_ptr<CodeBreaker> breaker(create_simple_code_breaker(rules));
+    const char *name = "minavg";
+    std::unique_ptr<CodeBreaker> breaker(create_heuristic_breaker(rules, name));
 
     for (int round = 1; round < 10000; ++round)
     {
@@ -87,6 +89,40 @@ static void self_play(const mastermind::CodewordRules &rules)
     }
 }
 
+static void test_breaker(const mastermind::CodewordRules &rules)
+{
+    using namespace mastermind;
+
+    const char *heuristic = "minavg2";
+    CodewordPopulation population(rules);
+    size_t total_steps = 0;
+    size_t worst_steps = 0;
+    for (size_t index = 0; index < population.size(); ++index)
+    {
+        std::unique_ptr<CodeMaker> maker(create_code_maker(rules, population.get(index)));
+        //std::unique_ptr<CodeBreaker> breaker(create_simple_code_breaker(rules));
+        std::unique_ptr<CodeBreaker> breaker(create_heuristic_breaker(rules, heuristic));
+
+        size_t round = 0;
+        while (++round < 10000)
+        {
+            Codeword guess = breaker->make_guess();
+            Feedback response = maker->respond(guess);
+            if (response == Feedback::perfect_match(rules))
+                break;
+            breaker->step(guess, response);
+        }
+        total_steps += round;
+        worst_steps = std::max(worst_steps, round);
+        if (index > 10000)
+            break;
+    }
+    std::cout << "Average steps: " << total_steps << "/" << population.size()
+        << " = " << static_cast<double>(total_steps) / population.size()
+        << std::endl;
+    std::cout << "Worst-case steps: " << worst_steps << std::endl;
+}
+
 int main(int argc, const char *argv[])
 {
     using namespace mastermind;
@@ -97,7 +133,8 @@ int main(int argc, const char *argv[])
     PositionSize m = rules.codeword_length();
     CodewordStructure structure = rules.structure();
 
-    self_play(rules);
+//    self_play(rules);
+    test_breaker(rules);
     return 0;
 
     const std::string options_requring_argument = "mn";
