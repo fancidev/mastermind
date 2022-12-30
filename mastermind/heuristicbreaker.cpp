@@ -15,7 +15,7 @@
 namespace mastermind {
 
 template <class H>
-concept Heuristic = requires(std::span<size_t> partition_sizes)
+concept Heuristic = requires(std::span<const size_t> partition_sizes)
 {
     /// `H::score_type` shall be the return type of `H::evaluate()`.
     typename H::score_type;
@@ -116,38 +116,35 @@ namespace heuristics {
 /// posterior potential secrets, the second-to-worst number is compared,
 /// and so on.
 ///
-/// ??? If a correction is applied (which is the default), a cell corresponding
-/// ??? to a perfect match is assumed to be empty, because it will not "remain"
-/// ??? after this guess.
+/// If `AdjustPerfectPartition` is true, the size of the perfect partition
+/// (if non-zero) is treated as being zero.  The rationale is that the perfect
+/// partition requires no more guess.
+template <bool AdjustPerfectPartition>
 struct MinimizeWorstCase
 {
     using score_type = std::array<size_t, Feedback::MaxOutcomes>;
 
-    static constexpr const char *name() noexcept { return "minmax"; }
+    static constexpr const char *name() noexcept
+    {
+        return AdjustPerfectPartition ? "minmax" : "minmax~";
+    }
 
     /// Returns a copy of the partition sizes sorted in descending order.
-    static constexpr score_type evaluate(std::span<size_t> partition_sizes) noexcept
+    static constexpr score_type evaluate(
+        std::span<const size_t> partition_sizes) noexcept
     {
         score_type score{};
         std::copy(partition_sizes.begin(),
                   partition_sizes.end(),
                   score.begin());
-        std::sort(score.begin(), score.end(), std::greater());
+
+        if constexpr (AdjustPerfectPartition)
+            score[partition_sizes.size() - 1] = 0;
+
+        std::sort(score.begin(),
+                  score.begin() + partition_sizes.size(),
+                  std::greater());
         return score;
-    }
-};
-
-/// Similar to MinimizeWorstCase, except that the size of a perfect partition
-/// (if any) is treated as being zero.  The rationale is that the perfect
-/// partition requires no more guess.
-struct MinimizeWorstCase2 : MinimizeWorstCase
-{
-    static constexpr const char *name() noexcept { return "minmax2"; }
-
-    static constexpr score_type evaluate(std::span<size_t> partition_sizes) noexcept
-    {
-        partition_sizes[partition_sizes.size() - 1] = 0;
-        return MinimizeWorstCase::evaluate(partition_sizes);
     }
 };
 
@@ -163,17 +160,29 @@ struct MinimizeWorstCase2 : MinimizeWorstCase
 ///
 ///   `N[1]**2 + ... + N[P]**2`
 ///
+/// If `AdjustPerfectPartition` is true, the partition of perfect match is
+/// excluded from the summation above.  The rationale is that the perfect
+/// partition requires no more guesses.
+template <bool AdjustPerfectPartition>
 struct MinimizeAverage
 {
     using score_type = uint64_t;
 
-    static constexpr const char *name() noexcept { return "minavg"; }
+    static constexpr const char *name() noexcept
+    {
+        return AdjustPerfectPartition ? "minavg" : "minavg~";
+    }
 
-    static constexpr score_type evaluate(std::span<size_t> partition_sizes) noexcept
+    static constexpr score_type evaluate(
+        std::span<const size_t> partition_sizes) noexcept
     {
         auto op = [](score_type score, size_t count) -> score_type {
             return score + count * count;
         };
+
+        if constexpr (AdjustPerfectPartition)
+            partition_sizes = partition_sizes.first(partition_sizes.size() - 2);
+
         return std::accumulate(partition_sizes.begin(),
                                partition_sizes.end(),
                                score_type(0),
@@ -181,19 +190,67 @@ struct MinimizeAverage
     }
 };
 
-/// Similar to MinimizeAverage, except that the partition of perfect match
-/// (if any) is excluded from the score.  The rationale is that the perfect
-/// partition requires no more guess.
-struct MinimizeAverage2 : MinimizeAverage
+/// Scores a guess by (a proxy for) the expected number of further guesses
+/// needed to reveal the secret (Neuwirth, 1982).
+///
+/// Specifically, given P partitions of size N[1], ..., N[P] that sum to N,
+/// the objective is to maximize the posterior entropy, defined as
+///
+///   `-[ (N[1]/N)*log(N[1]/N) + ... + (N[P]/N)*log(N[P]/N) ]`
+///
+/// which is equivalent to minimizing
+///
+///   `N[1]*log(N[1]) + ... + N[P]*log(N[P])`
+///
+/// Assuming `log(N[i])` to be proportional to the number of further guesses
+/// needed to reveal a secret in the i-th partition, and assumining secrets
+/// to be uniformly distributed, the objective function is then proportional
+/// to the expected number of further guesses needed.
+///
+/// If `AdjustPerfectPartition` is true, the perfect partition is excluded
+/// from the summation above.  The rationale is that the perfect partition
+/// requires no more guesses.
+///
+template <bool AdjustPerfectPartition>
+struct MaximizeEntropy
 {
-    static constexpr const char *name() noexcept { return "minavg2"; }
+    using score_type = double;
+//    /// Type of the score (wrapped double to avoid numerical instability
+//    /// during comparison).
+//    typedef util::wrapped_float<double, 100> score_t;
 
-    static constexpr score_type evaluate(std::span<size_t> partition_sizes) noexcept
+    static constexpr const char *name() noexcept
     {
-        return MinimizeAverage::evaluate(
-            partition_sizes.first(partition_sizes.size() - 2));
+        return AdjustPerfectPartition ? "entropy" : "entropy~";
+    }
+
+    static constexpr score_type evaluate(
+        std::span<const size_t> partition_sizes) noexcept
+    {
+        auto op = [](score_type score, size_t count) -> score_type
+        {
+            if (count >= 2)
+                return score + std::log(static_cast<double>(count)) * count;
+            else
+                return score;
+        };
+
+        if constexpr (AdjustPerfectPartition)
+            partition_sizes = partition_sizes.first(partition_sizes.size() - 2);
+
+        // TODO: check the below
+//        if (apply_correction && freq[freq.size()-1]) // 4A0B
+//        {
+//            s -= 2.0 * std::log(2.0);
+//        }
+
+        return std::accumulate(partition_sizes.begin(),
+                               partition_sizes.end(),
+                               0.0,
+                               op);
     }
 };
+
 
 } // namespace heuristics
 
@@ -201,13 +258,39 @@ std::unique_ptr<CodeBreaker>
 create_heuristic_breaker(const CodewordRules &rules, std::string_view name)
 {
     if (name == "minavg")
-        return std::make_unique<HeuristicCodeBreaker<heuristics::MinimizeAverage>>(rules);
-    else if (name == "minavg2")
-        return std::make_unique<HeuristicCodeBreaker<heuristics::MinimizeAverage2>>(rules);
+    {
+        return std::make_unique<HeuristicCodeBreaker<
+            heuristics::MinimizeAverage<true>>>(rules);
+    }
+    else if (name == "minavg~")
+    {
+        return std::make_unique<HeuristicCodeBreaker<
+            heuristics::MinimizeAverage<false>>>(rules);
+    }
     else if (name == "minmax")
-        return std::make_unique<HeuristicCodeBreaker<heuristics::MinimizeWorstCase>>(rules);
+    {
+        return std::make_unique<HeuristicCodeBreaker<
+            heuristics::MinimizeWorstCase<true>>>(rules);
+    }
+    else if (name == "minmax~")
+    {
+        return std::make_unique<HeuristicCodeBreaker<
+            heuristics::MinimizeWorstCase<false>>>(rules);
+    }
+    else if (name == "entropy")
+    {
+        return std::make_unique<HeuristicCodeBreaker<
+            heuristics::MaximizeEntropy<true>>>(rules);
+    }
+    else if (name == "entropy~")
+    {
+        return std::make_unique<HeuristicCodeBreaker<
+            heuristics::MaximizeEntropy<false>>>(rules);
+    }
     else
+    {
         throw std::invalid_argument("invalid heuristic name");
+    }
 }
 
 } // namespace mastermind

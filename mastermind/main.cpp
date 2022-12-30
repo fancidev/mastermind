@@ -89,11 +89,11 @@ static void self_play(const mastermind::CodewordRules &rules)
     }
 }
 
-static void test_breaker(const mastermind::CodewordRules &rules)
+static void test_breaker(const mastermind::CodewordRules &rules,
+                         const char *name)
 {
     using namespace mastermind;
 
-    const char *heuristic = "minmax";
     CodewordPopulation population(rules);
     size_t total_steps = 0;
     size_t worst_steps = 0;
@@ -101,7 +101,7 @@ static void test_breaker(const mastermind::CodewordRules &rules)
     {
         std::unique_ptr<CodeMaker> maker(create_code_maker(rules, population.get(index)));
         //std::unique_ptr<CodeBreaker> breaker(create_simple_code_breaker(rules));
-        std::unique_ptr<CodeBreaker> breaker(create_heuristic_breaker(rules, heuristic));
+        std::unique_ptr<CodeBreaker> breaker(create_heuristic_breaker(rules, name));
 
         size_t round = 0;
         while (++round < 10000)
@@ -117,10 +117,11 @@ static void test_breaker(const mastermind::CodewordRules &rules)
         if (index > 10000)
             break;
     }
-    std::cout << "Average steps: " << total_steps << "/" << population.size()
+    std::cout << "**" << name << std::endl;
+    std::cout << "  Avg steps: " << total_steps << "/" << population.size()
         << " = " << static_cast<double>(total_steps) / population.size()
         << std::endl;
-    std::cout << "Worst-case steps: " << worst_steps << std::endl;
+    std::cout << "  Max steps: " << worst_steps << std::endl;
 }
 
 int main(int argc, const char *argv[])
@@ -134,7 +135,13 @@ int main(int argc, const char *argv[])
     CodewordStructure structure = rules.structure();
 
 //    self_play(rules);
-    test_breaker(rules);
+    const char *heuristics[] = {
+        "minavg", "minavg~", "minmax", "minmax~", "entropy", "entropy~",
+    };
+    for (const char *heuristic : heuristics)
+    {
+        test_breaker(rules, heuristic);
+    }
     return 0;
 
     const std::string options_requring_argument = "mn";
