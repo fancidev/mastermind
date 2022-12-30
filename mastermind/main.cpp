@@ -93,7 +93,7 @@ static void test_breaker(const mastermind::CodewordRules &rules)
 {
     using namespace mastermind;
 
-    const char *heuristic = "minavg2";
+    const char *heuristic = "minmax";
     CodewordPopulation population(rules);
     size_t total_steps = 0;
     size_t worst_steps = 0;

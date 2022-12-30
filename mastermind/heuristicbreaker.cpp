@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <concepts>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -13,33 +14,32 @@
 
 namespace mastermind {
 
-class Heuristic
+template <class H>
+concept Heuristic = requires(std::span<size_t> partition_sizes)
 {
-public:
-    typedef uint64_t score_type;
-    virtual ~Heuristic() = default;
+    /// `H::score_type` shall be the return type of `H::evaluate()`.
+    typename H::score_type;
 
-    /// Gets the name of the heuristic.  The returned pointer is valid
-    /// during the lifetime of the heuristic object.
-    virtual const char *name() const = 0;
+    /// `H::name()` shall return the name of the heuristic.  The returned
+    /// pointer must have static lifetime.
+    { H::name() } -> std::convertible_to<const char *>;
 
-    /// Computes a score for the given partitioning of potential secrets.
-    /// The number of partitions (including empty ones) MUST cover each
-    /// feedback ordinal from 0A0B to mA0B, inclusive, including the
-    /// impossible feedback ordinal (m-1)A1B.
-    virtual score_type score(std::span<const size_t> partition_sizes) const = 0;
-
-protected:
-    Heuristic() = default;
+    /// `H::evaluate()` shall return a value of `H::score_type` for the
+    /// given partitioning of potential secrets.
+    ///
+    /// `H::evaluate()` is guaranteed to be called with the size of the
+    /// partitions corresponding to feedback ordinals 0A0B through mA0B,
+    /// including empty ones as well as the impossible feedback (m-1)A1B.
+    { H::evaluate(partition_sizes) } ->
+        std::convertible_to<typename H::score_type>;
 };
 
+template <Heuristic H>
 class HeuristicCodeBreaker : public CodeBreaker
 {
 public:
-    HeuristicCodeBreaker(const CodewordRules &rules,
-                         std::unique_ptr<Heuristic> heuristic)
-      : _heuristic(std::move(heuristic)),
-        _partition_count(Feedback::perfect_match(rules).ordinal() + 1)
+    HeuristicCodeBreaker(const CodewordRules &rules)
+      : _partition_count(Feedback::perfect_match(rules).ordinal() + 1)
     {
         CodewordPopulation population(rules);
         size_t count = population.size();
@@ -49,10 +49,7 @@ public:
         _admissible = std::span(_population);
     }
 
-    virtual const char *name() const override
-    {
-        return _heuristic->name();
-    }
+    virtual const char *name() const override { return H::name(); }
 
     virtual Codeword make_guess() override
     {
@@ -64,21 +61,22 @@ public:
         std::span<Codeword> candidate_guesses(_population);
 
         Codeword chosen_guess;
-        Heuristic::score_type chosen_score =
-            std::numeric_limits<Heuristic::score_type>::max();
+        typename H::score_type chosen_score{};
 
-        for (Codeword guess : candidate_guesses)
+        for (size_t index = 0; index < candidate_guesses.size(); index++)
         {
-            std::array<size_t, 256> freq{};
+            Codeword guess = candidate_guesses[index];
+
+            std::array<size_t, Feedback::MaxOutcomes> freq{};
             for (Codeword secret : _admissible)
             {
                 Feedback feedback = compare(guess, secret);
                 ++freq[feedback.ordinal()];
             }
 
-            Heuristic::score_type score = _heuristic->score(
+            typename H::score_type score = H::evaluate(
                 std::span(freq).first(_partition_count));
-            if (score < chosen_score)
+            if (index == 0 || score < chosen_score)
             {
                 chosen_guess = guess;
                 chosen_score = score;
@@ -108,11 +106,50 @@ public:
 private:
     std::vector<Codeword> _population;
     std::span<Codeword> _admissible;
-    std::unique_ptr<Heuristic> _heuristic;
     size_t _partition_count;
 };
 
 namespace heuristics {
+
+/// Scores a guess by the worst-case number of posterior potential secrets
+/// (Knuth, 1976).  If two guesses produce the same worst-case number of
+/// posterior potential secrets, the second-to-worst number is compared,
+/// and so on.
+///
+/// ??? If a correction is applied (which is the default), a cell corresponding
+/// ??? to a perfect match is assumed to be empty, because it will not "remain"
+/// ??? after this guess.
+struct MinimizeWorstCase
+{
+    using score_type = std::array<size_t, Feedback::MaxOutcomes>;
+
+    static constexpr const char *name() noexcept { return "minmax"; }
+
+    /// Returns a copy of the partition sizes sorted in descending order.
+    static constexpr score_type evaluate(std::span<size_t> partition_sizes) noexcept
+    {
+        score_type score{};
+        std::copy(partition_sizes.begin(),
+                  partition_sizes.end(),
+                  score.begin());
+        std::sort(score.begin(), score.end(), std::greater());
+        return score;
+    }
+};
+
+/// Similar to MinimizeWorstCase, except that the size of a perfect partition
+/// (if any) is treated as being zero.  The rationale is that the perfect
+/// partition requires no more guess.
+struct MinimizeWorstCase2 : MinimizeWorstCase
+{
+    static constexpr const char *name() noexcept { return "minmax2"; }
+
+    static constexpr score_type evaluate(std::span<size_t> partition_sizes) noexcept
+    {
+        partition_sizes[partition_sizes.size() - 1] = 0;
+        return MinimizeWorstCase::evaluate(partition_sizes);
+    }
+};
 
 /// Scores a guess by the posterior expected number of potential secrets,
 /// assuming equal prior probability of each potential secret (Irving, 1979).
@@ -126,11 +163,13 @@ namespace heuristics {
 ///
 ///   `N[1]**2 + ... + N[P]**2`
 ///
-struct MinimizeAverage : public Heuristic
+struct MinimizeAverage
 {
-    const char *name() const override { return "minavg"; }
+    using score_type = uint64_t;
 
-    score_type score(std::span<const size_t> partition_sizes) const override
+    static constexpr const char *name() noexcept { return "minavg"; }
+
+    static constexpr score_type evaluate(std::span<size_t> partition_sizes) noexcept
     {
         auto op = [](score_type score, size_t count) -> score_type {
             return score + count * count;
@@ -145,13 +184,13 @@ struct MinimizeAverage : public Heuristic
 /// Similar to MinimizeAverage, except that the partition of perfect match
 /// (if any) is excluded from the score.  The rationale is that the perfect
 /// partition requires no more guess.
-struct MinimizeAverage2 : public MinimizeAverage
+struct MinimizeAverage2 : MinimizeAverage
 {
-    const char *name() const override { return "minavg2"; }
+    static constexpr const char *name() noexcept { return "minavg2"; }
 
-    score_type score(std::span<const size_t> partition_sizes) const override
+    static constexpr score_type evaluate(std::span<size_t> partition_sizes) noexcept
     {
-        return MinimizeAverage::score(
+        return MinimizeAverage::evaluate(
             partition_sizes.first(partition_sizes.size() - 2));
     }
 };
@@ -161,15 +200,14 @@ struct MinimizeAverage2 : public MinimizeAverage
 std::unique_ptr<CodeBreaker>
 create_heuristic_breaker(const CodewordRules &rules, std::string_view name)
 {
-    std::unique_ptr<Heuristic> heuristic;
     if (name == "minavg")
-        heuristic = std::make_unique<heuristics::MinimizeAverage>();
+        return std::make_unique<HeuristicCodeBreaker<heuristics::MinimizeAverage>>(rules);
     else if (name == "minavg2")
-        heuristic = std::make_unique<heuristics::MinimizeAverage2>();
+        return std::make_unique<HeuristicCodeBreaker<heuristics::MinimizeAverage2>>(rules);
+    else if (name == "minmax")
+        return std::make_unique<HeuristicCodeBreaker<heuristics::MinimizeWorstCase>>(rules);
     else
         throw std::invalid_argument("invalid heuristic name");
-
-    return std::make_unique<HeuristicCodeBreaker>(rules, std::move(heuristic));
 }
 
 } // namespace mastermind
