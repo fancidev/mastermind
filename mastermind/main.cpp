@@ -130,19 +130,21 @@ int main(int argc, const char *argv[])
 
     CodewordRules rules;
 
-    std::string alphabet(rules.alphabet());
+    AlphabetSize n = rules.alphabet_size();
     PositionSize m = rules.codeword_length();
     CodewordStructure structure = rules.structure();
 
 //    self_play(rules);
+#if 1
     const char *heuristics[] = {
-        "maxparts", "maxparts~", "minavg", "minavg~", "minmax", "minmax~", "entropy", "entropy~",
+        "maxparts", // "maxparts~", "minavg", "minavg~", "minmax", "minmax~", "entropy", "entropy~",
     };
     for (const char *heuristic : heuristics)
     {
         test_breaker(rules, heuristic);
     }
     return 0;
+#endif
 
     const std::string options_requring_argument = "mn";
 
@@ -177,27 +179,21 @@ int main(int argc, const char *argv[])
                 m = std::atoi(val);
                 break;
             case 'n':
-            {
-                int n = std::atoi(val);
-                if (!(n >= 0 && n <= MAX_ALPHABET_SIZE))
-                    return usage("alphabet size out of range");
-                static_assert(MAX_ALPHABET_SIZE <= 10, "not supported");
-                alphabet = std::string("1234567890").substr(0, n);
+                n = std::atoi(val);
                 break;
-            }
             default:
                 return usage("unknown option");
         }
     }
 
-//    try
-//    {
-//        rules = mastermind::CodewordRules(alphabet, m, structure);
-//    }
-//    catch (const std::invalid_argument &ex)
-//    {
-//        return usage(ex.what());
-//    }
+    try
+    {
+        rules = mastermind::CodewordRules(n, m, structure);
+    }
+    catch (const std::invalid_argument &ex)
+    {
+        return usage(ex.what());
+    }
 
     std::cout << "Codeword rules:" << std::endl;
     std::cout << "  Alphabet size: " << rules.alphabet_size() << std::endl;
@@ -209,18 +205,19 @@ int main(int argc, const char *argv[])
     CodewordPopulation population(rules);
     std::cout << "Population size: " << population.size() << std::endl;
 
+    std::vector<Codeword> all(population.begin(), population.end());
+
     std::cout << "First 5:";
-    for (size_t index = 0; index < 5 && index < population.size(); index++)
+    for (size_t index = 0; index < 5 && index < all.size(); index++)
     {
-        std::cout << " " << population.get(index);
+        std::cout << " " << all[index];
     }
     std::cout << std::endl;
 
     std::cout << "Last  5:";
-    for (size_t index = 0; index < 5; index++)
+    for (size_t index = std::max<size_t>(5, all.size()) - 5; index < all.size(); index++)
     {
-        //if (index + )
-        std::cout << " " << population.get(population.size() - (5 - index));
+        std::cout << " " << all[index];
     }
     std::cout << std::endl;
 

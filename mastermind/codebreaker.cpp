@@ -11,10 +11,7 @@ public:
     SimpleCodeBreaker(const CodewordRules &rules)
     {
         CodewordPopulation population(rules);
-        size_t count = population.size();
-        _potential_secrets.reserve(count);
-        for (size_t i = 0; i < count; i++)
-            _potential_secrets.emplace_back(population.get(i));
+        _potential_secrets.assign(population.begin(), population.end());
     }
 
     virtual const char *name() const override

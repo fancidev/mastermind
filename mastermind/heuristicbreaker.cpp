@@ -42,10 +42,7 @@ public:
       : _partition_count(Feedback::perfect_match(rules).ordinal() + 1)
     {
         CodewordPopulation population(rules);
-        size_t count = population.size();
-        _population.reserve(count);
-        for (size_t i = 0; i < count; i++)
-            _population.push_back(population.get(i));
+        _population.assign(population.begin(), population.end());
         _admissible = std::span(_population);
     }
 

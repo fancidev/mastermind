@@ -142,6 +142,9 @@ public:
         return std::string_view(ALPHABET, _alphabet_size);
     }
 
+    /// Default equality operators by member comparison.
+    constexpr bool operator==(const CodewordRules &) const noexcept = default;
+
 //    /// Returns the string representation of the rule set in the form
 //    /// "p4c6r" or "p4c10n".
 //    std::string to_str() const
@@ -643,6 +646,41 @@ public:
         }
         return Codeword(std::span(letters).first(m), _rules);
     }
+
+    class Iterator
+    {
+    public:
+        // TODO: std::random_access_iterator_tag crashes the process
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = Codeword;
+        using difference_type = std::ptrdiff_t;
+        using pointer = const Codeword *;
+        using reference = Codeword;
+
+        constexpr Iterator(const CodewordPopulation &owner, size_t index) noexcept
+          : _owner(&owner), _index(index) { }
+
+        constexpr reference operator *() const noexcept
+        { return _owner->get(_index); }
+
+//        constexpr Iterator& operator +=(difference_type d) noexcept
+//        { _index += d; return *this; }
+
+        constexpr Iterator& operator ++() noexcept { ++_index; return *this; }
+
+//        friend constexpr bool operator -(const Iterator &a, const Iterator &b) noexcept
+//        { return a._index - b._index; }
+
+        constexpr bool operator <=>(const Iterator &) const noexcept = default;
+
+    private:
+        const CodewordPopulation *_owner;
+        difference_type _index;
+    };
+
+    Iterator begin() const noexcept { return Iterator(*this, 0); }
+
+    Iterator end() const noexcept { return Iterator(*this, size()); }
 
 private:
     /// Rule set that all codewords in the population conform to.
