@@ -136,7 +136,7 @@ int main(int argc, const char *argv[])
 
 //    self_play(rules);
     const char *heuristics[] = {
-        "maxparts", "maxparts~", "minavg", "minavg~", // "minmax", "minmax~", "entropy", "entropy~",
+        "maxparts", "maxparts~", "minavg", "minavg~", "minmax", "minmax~", "entropy", "entropy~",
     };
     for (const char *heuristic : heuristics)
     {

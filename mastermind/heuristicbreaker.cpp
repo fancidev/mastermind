@@ -117,16 +117,17 @@ namespace heuristics {
 /// and so on.
 ///
 /// If `AdjustPerfectPartition` is true, the size of the perfect partition
-/// (if non-zero) is treated as being zero.  The rationale is that the perfect
-/// partition requires no more guess.
-template <bool AdjustPerfectPartition>
+/// is always treated as zero, essentially favoring a non-empty perfect
+/// partition.  The rationale is that the perfect partition requires no
+/// more guesses.
+template <bool AdjustPerfectPartition = false>
 struct MinimizeWorstCase
 {
     using score_type = std::array<size_t, Feedback::MaxOutcomes>;
 
     static constexpr const char *name() noexcept
     {
-        return AdjustPerfectPartition ? "minmax" : "minmax~";
+        return AdjustPerfectPartition ? "minmax~" : "minmax";
     }
 
     /// Returns a copy of the partition sizes sorted in descending order.
@@ -160,17 +161,18 @@ struct MinimizeWorstCase
 ///
 ///   `N[1]**2 + ... + N[P]**2`
 ///
-/// If `AdjustPerfectPartition` is true, the partition of perfect match is
-/// excluded from the summation above.  The rationale is that the perfect
-/// partition requires no more guesses.
-template <bool AdjustPerfectPartition>
+/// If `AdjustPerfectPartition` is true, the size of the perfect partition
+/// is excluded from the summation above, essentially favoring guesses that
+/// are admissible.  The rationale is that the perfect partition requires
+/// no more guesses.
+template <bool AdjustPerfectPartition = false>
 struct MinimizeAverage
 {
     using score_type = uint64_t;
 
     static constexpr const char *name() noexcept
     {
-        return AdjustPerfectPartition ? "minavg" : "minavg~";
+        return AdjustPerfectPartition ? "minavg~" : "minavg";
     }
 
     static constexpr score_type evaluate(
@@ -211,7 +213,7 @@ struct MinimizeAverage
 /// from the summation above.  The rationale is that the perfect partition
 /// requires no more guesses.
 ///
-template <bool AdjustPerfectPartition>
+template <bool AdjustPerfectPartition = false>
 struct MaximizeEntropy
 {
     using score_type = double;
@@ -221,7 +223,7 @@ struct MaximizeEntropy
 
     static constexpr const char *name() noexcept
     {
-        return AdjustPerfectPartition ? "entropy" : "entropy~";
+        return AdjustPerfectPartition ? "entropy~" : "entropy";
     }
 
     static constexpr score_type evaluate(
@@ -292,32 +294,32 @@ create_heuristic_breaker(const CodewordRules &rules, std::string_view name)
     if (name == "minavg")
     {
         return std::make_unique<HeuristicCodeBreaker<
-            heuristics::MinimizeAverage<true>>>(rules);
+            heuristics::MinimizeAverage<false>>>(rules);
     }
     else if (name == "minavg~")
     {
         return std::make_unique<HeuristicCodeBreaker<
-            heuristics::MinimizeAverage<false>>>(rules);
+            heuristics::MinimizeAverage<true>>>(rules);
     }
     else if (name == "minmax")
     {
         return std::make_unique<HeuristicCodeBreaker<
-            heuristics::MinimizeWorstCase<true>>>(rules);
+            heuristics::MinimizeWorstCase<false>>>(rules);
     }
     else if (name == "minmax~")
     {
         return std::make_unique<HeuristicCodeBreaker<
-            heuristics::MinimizeWorstCase<false>>>(rules);
+            heuristics::MinimizeWorstCase<true>>>(rules);
     }
     else if (name == "entropy")
     {
         return std::make_unique<HeuristicCodeBreaker<
-            heuristics::MaximizeEntropy<true>>>(rules);
+            heuristics::MaximizeEntropy<false>>>(rules);
     }
     else if (name == "entropy~")
     {
         return std::make_unique<HeuristicCodeBreaker<
-            heuristics::MaximizeEntropy<false>>>(rules);
+            heuristics::MaximizeEntropy<true>>>(rules);
     }
     else if (name == "maxparts")
     {
