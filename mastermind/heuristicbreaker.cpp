@@ -251,6 +251,38 @@ struct MaximizeEntropy
     }
 };
 
+/// Scores a guess by the number of (non-empty) partitions it produces.
+/// The rationale is that more partitions means more information which
+/// leads to fewer further steps.
+///
+/// If `AdjustPerfectPartition` is true, the perfect partition counts
+/// as 1.5 partitions, making it slightly more favorable.  This makes
+/// limited sense and is merely provided for completeness.
+template <bool AdjustPerfectPartition = false>
+struct MaximizePartitions
+{
+    using score_type = int;
+
+    static constexpr const char *name() noexcept
+    {
+        return AdjustPerfectPartition ? "maxparts~" : "maxparts";
+    }
+
+    /// Returns the negative number of non-empty partitions (to minimize).
+    static constexpr int evaluate(
+        std::span<const size_t> partition_sizes) noexcept
+    {
+        int count = std::count_if(partition_sizes.begin(),
+                                  partition_sizes.end(),
+                                  [](size_t k) { return k > 0; });
+
+        if constexpr (AdjustPerfectPartition)
+            count = 2 * count + static_cast<int>(
+                partition_sizes[partition_sizes.size() - 1]);
+
+        return -count; // return negative number for minimization
+    }
+};
 
 } // namespace heuristics
 
@@ -286,6 +318,16 @@ create_heuristic_breaker(const CodewordRules &rules, std::string_view name)
     {
         return std::make_unique<HeuristicCodeBreaker<
             heuristics::MaximizeEntropy<false>>>(rules);
+    }
+    else if (name == "maxparts")
+    {
+        return std::make_unique<HeuristicCodeBreaker<
+            heuristics::MaximizePartitions<false>>>(rules);
+    }
+    else if (name == "maxparts~")
+    {
+        return std::make_unique<HeuristicCodeBreaker<
+            heuristics::MaximizePartitions<true>>>(rules);
     }
     else
     {
