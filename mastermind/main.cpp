@@ -48,10 +48,11 @@ static void play(const mastermind::CodewordRules &rules)
         if (s == "quit")
             break;
 
-        Codeword guess = code_maker->secret().value(); // TODO: FIXME
+        Codeword guess(rules);
         try
         {
-            guess = Codeword::from_string(s, rules);
+            if (!(std::istringstream(s) >> guess))
+                throw std::invalid_argument("cannot read guess");
         }
         catch (const std::invalid_argument &ex)
         {
@@ -132,7 +133,7 @@ int main(int argc, const char *argv[])
 
     AlphabetSize n = rules.alphabet_size();
     PositionSize m = rules.codeword_length();
-    CodewordStructure structure = rules.structure();
+    bool heterogram = rules.heterogram();
 
 //    self_play(rules);
 #if 1
@@ -171,7 +172,7 @@ int main(int argc, const char *argv[])
         switch (opt[1])
         {
             case 'd':
-                structure = CodewordStructure::Heterogram;
+                heterogram = true;
                 break;
             case 'h':
                 return usage(nullptr);
@@ -188,17 +189,17 @@ int main(int argc, const char *argv[])
 
     try
     {
-        rules = mastermind::CodewordRules(n, m, structure);
+        rules = mastermind::CodewordRules(n, m, heterogram);
     }
     catch (const std::invalid_argument &ex)
     {
         return usage(ex.what());
     }
 
-    std::cout << "Codeword rules:" << std::endl;
+    std::cout << "Codeword rules: " << rules << std::endl;
     std::cout << "  Alphabet size: " << rules.alphabet_size() << std::endl;
     std::cout << "  Codeword length: " << rules.codeword_length() << std::endl;
-    std::cout << "  Structure: " << to_string(rules.structure()) <<  std::endl;
+    std::cout << "  Requires hetero: " << rules.heterogram() <<  std::endl;
     std::cout << "Perfect match is " <<
         Feedback::perfect_match(rules) << std::endl;
 
