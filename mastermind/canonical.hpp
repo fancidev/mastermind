@@ -152,7 +152,6 @@ struct CodewordPermutation
 
 /// Represents the set of all automorphisms (permutation of letters and
 /// positions) that map a guess sequence to itself.
-/// TODO: include the letter sequence
 class AutomorphismGroup
 {
 public:
@@ -185,10 +184,19 @@ public:
         return false;
     }
 
-    /// If guess is canonical, refine the automorphism.
+    /// If `guess` is canonical under the current automorphism, update
+    /// the current automorphism group by appending `guess` to the
+    /// sequence, and returns `true`.  Otherwise, returns `false`.
+    ///
+    /// `guess` is canonical if none of the permutations in the current
+    /// automorphism group maps `guess` to a lexicographically smaller
+    /// image.
+    ///
+    /// Note: The updated automorphism group may be a singleton.
+    ///
     /// TODO: Some of the code branches might be optimized by
     /// TODO: studying the structure of automorphism.
-    bool refine(Codeword guess) noexcept
+    bool refine(const Codeword &guess)
     {
         // TODO: support Codeword::begin() and Codeword::end()
         const LetterSequence letters = guess.letters();
@@ -223,12 +231,21 @@ public:
                 perms.push_back(perm);
         }
 
+        _guess_sequence.push_back(guess); // may throw
         std::swap(perms, _perms);
         return true;
     }
 
+    constexpr const std::vector<Codeword> &guess_sequence() const
+    {
+        return _guess_sequence;
+    }
+
 private:
-    /// List of all the permutations that map a guess sequence to itself.
+    /// The guess sequence whose automorphism group is represented.
+    std::vector<Codeword> _guess_sequence;
+
+    /// List of all permutations that map `_guess_sequence` to itself.
     std::vector<CodewordPermutation> _perms;
 };
 
@@ -255,60 +272,41 @@ private:
 //	os << ")";
 //	return os;
 //}
+//
+//inline void get_canonical_guesses(const CodewordRules &rules)
+//{
+//    CodewordPopulation population(rules);
+//    std::vector<Codeword> candidate_guesses(population.begin(), population.end());
+//
+//    AutomorphismGroup group(rules);
+//    AutomorphismGroup current(group);
+//#if 1
+//    for (Codeword guess : candidate_guesses)
+//    {
+//        if (current.refine(guess))
+//        {
+//            std::cout << "Canonical: " << guess << std::endl;
+//            current = group;
+//        }
+//    }
+//#else
+//    Codeword guess(rules);
+//    std::istringstream("0111") >> guess;
+//    if (current.refine(guess))
+//    {
+//        std::cout << "Canonical: " << guess << std::endl;
+//        current = group;
+//    }
+//    else
+//    {
+//        std::cout << "Not canonical" << std::endl;
+//    }
+//#endif
+//}
 
-inline void get_canonical_guesses(const CodewordRules &rules)
-{
-    CodewordPopulation population(rules);
-    std::vector<Codeword> candidate_guesses(population.begin(), population.end());
-
-    AutomorphismGroup group(rules);
-    AutomorphismGroup current(group);
-#if 1
-    for (Codeword guess : candidate_guesses)
-    {
-        if (current.refine(guess))
-        {
-            std::cout << "Canonical: " << guess << std::endl;
-            current = group;
-        }
-    }
-#else
-    Codeword guess(rules);
-    std::istringstream("0111") >> guess;
-    if (current.refine(guess))
-    {
-        std::cout << "Canonical: " << guess << std::endl;
-        current = group;
-    }
-    else
-    {
-        std::cout << "Not canonical" << std::endl;
-    }
-#endif
-}
-
-inline std::vector<std::pair<Codeword, AutomorphismGroup>>
+std::vector<AutomorphismGroup>
 get_canonical_guesses(const AutomorphismGroup &group,
-                      const CodewordRules &rules)
-{
-    // TODO: add Codeword::enumerate()
-    CodewordPopulation population(rules);
-    std::vector<Codeword> candidate_guesses(population.begin(), population.end());
-
-    std::vector<std::pair<Codeword, AutomorphismGroup>> result;
-
-    AutomorphismGroup current(group);
-    for (Codeword guess : candidate_guesses)
-    {
-        if (current.refine(guess))
-        {
-            result.emplace_back(guess, current);
-            // std::cout << "Canonical: " << guess << std::endl;
-            current = group;
-        }
-    }
-    return result;
-}
+                      std::span<const Codeword> candidate_guesses);
 
 } // namespace mastermind
 

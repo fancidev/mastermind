@@ -8,6 +8,8 @@
 #include <iostream>
 #include <string>
 
+using namespace mastermind;
+
 static int usage(const char *error)
 {
     if (error)
@@ -126,6 +128,45 @@ static void test_breaker(const mastermind::CodewordRules &rules,
     std::cout << "  Max steps: " << worst_steps << std::endl;
 }
 
+static void _display_canonical_guesses(const AutomorphismGroup &group,
+                                       std::span<const Codeword> candidate_guesses,
+                                       size_t &counter)
+{
+    if (group.guess_sequence().size() >= 4)
+        return;
+
+    std::vector<AutomorphismGroup> guesses =
+        get_canonical_guesses(group, candidate_guesses);
+    for (const AutomorphismGroup &g : guesses)
+    {
+        ++counter;
+//        std::cout << ++counter << "> ";
+
+        if (g.is_singleton())
+        {
+            for (const Codeword &guess : g.guess_sequence())
+                std::cout << guess << " ";
+            std::cout << "-> all" << std::endl;
+        }
+        else
+        {
+//            std::cout << std::endl;
+            _display_canonical_guesses(g, candidate_guesses, counter);
+        }
+    }
+}
+
+static void display_canonical_guesses(const CodewordRules &rules)
+{
+    // TODO: add Codeword::enumerate()
+    CodewordPopulation population(rules);
+    std::vector<Codeword> candidate_guesses(population.begin(), population.end());
+    AutomorphismGroup group(rules);
+    size_t counter = 0;
+    _display_canonical_guesses(group, candidate_guesses, counter);
+    std::cout << "*** Counter = " << counter << std::endl;
+}
+
 int main(int argc, const char *argv[])
 {
     using namespace mastermind;
@@ -133,19 +174,11 @@ int main(int argc, const char *argv[])
     CodewordRules rules;
 
 #if 1
-    AutomorphismGroup group(rules);
-    std::vector<std::pair<Codeword, AutomorphismGroup>> guesses =
-        get_canonical_guesses(group, rules);
-    for (const auto &[g, a] : guesses)
-    {
-        std::cout << "Canonical: " << g << std::endl;
-        std::vector<std::pair<Codeword, AutomorphismGroup>> next_guesses =
-            get_canonical_guesses(a, rules);
-        std::cout << "  # child: " << next_guesses.size() << std::endl;
-    }
+    display_canonical_guesses(rules);
     return 0;
 #endif
 
+#if 0
     AlphabetSize n = rules.alphabet_size();
     PositionSize m = rules.codeword_length();
     bool heterogram = rules.heterogram();
@@ -244,4 +277,5 @@ int main(int argc, const char *argv[])
 //        << compare(guess, secret).to_string() << std::endl;
 
     return 0;
+#endif
 }
