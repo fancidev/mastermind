@@ -1,6 +1,7 @@
 #include "codeword.hpp"
 #include "codemaker.hpp"
 #include "codebreaker.hpp"
+#include "canonical.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -130,6 +131,12 @@ int main(int argc, const char *argv[])
     using namespace mastermind;
 
     CodewordRules rules;
+
+#if 1
+    AutomorphismGroup group(rules);
+    get_canonical_guesses(group, rules);
+    return 0;
+#endif
 
     AlphabetSize n = rules.alphabet_size();
     PositionSize m = rules.codeword_length();

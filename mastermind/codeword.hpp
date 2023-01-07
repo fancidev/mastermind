@@ -59,6 +59,10 @@ typedef size_t PositionSize;
 /// Typedef to represent an index into a letter in a codeword.
 typedef size_t PositionIndex;
 
+/// Represents a sequence of no more than `MAX_CODEWORD_LENGTH` letters.
+using LetterSequence = std::experimental::fixed_capacity_vector<
+    AlphabetIndex, MAX_CODEWORD_LENGTH>;
+
 /// Defines the attributes that secrets and guesses must adhere to.
 class CodewordRules // TODO: rename to CodewordAttributes?
 {
@@ -435,6 +439,15 @@ public:
         const AlphabetSize n = alphabet_size();
         assert((_position_mask >> (j * n)) != 0);
         return std::countr_zero(_position_mask >> (j * n));
+    }
+
+    constexpr LetterSequence letters() const noexcept
+    {
+        const PositionSize m = length();
+        LetterSequence letters(m);
+        for (PositionIndex j = 0; j < m; j++)
+            letters[j] = get(j);
+        return letters;
     }
 
     /// Returns the number of times the i-th letter of the alphabet appears
