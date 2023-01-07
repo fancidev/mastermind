@@ -134,7 +134,15 @@ int main(int argc, const char *argv[])
 
 #if 1
     AutomorphismGroup group(rules);
-    get_canonical_guesses(group, rules);
+    std::vector<std::pair<Codeword, AutomorphismGroup>> guesses =
+        get_canonical_guesses(group, rules);
+    for (const auto &[g, a] : guesses)
+    {
+        std::cout << "Canonical: " << g << std::endl;
+        std::vector<std::pair<Codeword, AutomorphismGroup>> next_guesses =
+            get_canonical_guesses(a, rules);
+        std::cout << "  # child: " << next_guesses.size() << std::endl;
+    }
     return 0;
 #endif
 

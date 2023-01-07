@@ -409,7 +409,7 @@ get_canonical_guesses(const AutomorphismGroup &group,
         if (current.refine(guess))
         {
             result.emplace_back(guess, current);
-            std::cout << "Canonical: " << guess << std::endl;
+            // std::cout << "Canonical: " << guess << std::endl;
             current = group;
         }
     }
