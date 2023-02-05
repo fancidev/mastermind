@@ -1,25 +1,26 @@
 #include "canonical.hpp"
+#include <iostream>
 
 namespace mastermind {
 
-std::vector<AutomorphismGroup>
-get_canonical_guesses(const AutomorphismGroup &group,
+std::vector<CanonicalCodewordSequence>
+get_canonical_guesses(const CanonicalCodewordSequence &sequence,
                       std::span<const Codeword> candidate_guesses)
 {
-    std::vector<AutomorphismGroup> result;
+    std::vector<CanonicalCodewordSequence> result;
 
-    AutomorphismGroup current(group);
-    const std::vector<Codeword> &history = group.guess_sequence();
+    CanonicalCodewordSequence current(sequence);
+    const std::vector<Codeword> &history = current.sequence();
     for (Codeword guess : candidate_guesses)
     {
         if (std::find(history.begin(), history.end(), guess) != history.end())
             continue; // already guessed this!
 
-        if (current.refine(guess))
+        if (current.extend(guess))
         {
-            result.emplace_back(std::move(current));
-            // std::cout << "Canonical: " << guess << std::endl;
-            current = group;
+            result.push_back(current);
+//            std::cout << "Canonical: " << guess << std::endl;
+            current = sequence;
         }
     }
     return result;

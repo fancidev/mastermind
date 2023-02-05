@@ -10,7 +10,7 @@
 
 using namespace mastermind;
 
-static int usage(const char *error)
+int usage(const char *error)
 {
     if (error)
         std::cerr << "error: " << error << std::endl;
@@ -25,10 +25,8 @@ static int usage(const char *error)
     return error ? 1 : 0;
 }
 
-static void play(const mastermind::CodewordRules &rules)
+void play(const mastermind::CodewordRules &rules)
 {
-    using namespace mastermind;
-
     std::unique_ptr<CodeMaker> code_maker(create_code_maker(rules));
 
     for (int round = 1; ; ++round)
@@ -71,7 +69,7 @@ static void play(const mastermind::CodewordRules &rules)
     }
 }
 
-static void self_play(const mastermind::CodewordRules &rules)
+void self_play(const mastermind::CodewordRules &rules)
 {
     using namespace mastermind;
 
@@ -93,8 +91,8 @@ static void self_play(const mastermind::CodewordRules &rules)
     }
 }
 
-static void test_breaker(const mastermind::CodewordRules &rules,
-                         const char *name)
+void test_breaker(const mastermind::CodewordRules &rules,
+                  const char *name)
 {
     using namespace mastermind;
 
@@ -128,42 +126,47 @@ static void test_breaker(const mastermind::CodewordRules &rules,
     std::cout << "  Max steps: " << worst_steps << std::endl;
 }
 
-static void _display_canonical_guesses(const AutomorphismGroup &group,
+static void _display_canonical_guesses(const CanonicalCodewordSequence &group,
                                        std::span<const Codeword> candidate_guesses,
                                        size_t &counter)
 {
-    if (group.guess_sequence().size() >= 4)
+    if (group.sequence().size() >= 2)
         return;
 
-    std::vector<AutomorphismGroup> guesses =
+    std::vector<CanonicalCodewordSequence> guesses =
         get_canonical_guesses(group, candidate_guesses);
-    for (const AutomorphismGroup &g : guesses)
+    for (const CanonicalCodewordSequence &g : guesses)
     {
         ++counter;
-//        std::cout << ++counter << "> ";
+        std::cout << counter << ">";
+        for (auto cw : g.sequence())
+            std::cout << " " << cw;
+        std::cout << std::endl;
 
-        if (g.is_singleton())
-        {
-            for (const Codeword &guess : g.guess_sequence())
-                std::cout << guess << " ";
-            std::cout << "-> all" << std::endl;
-        }
-        else
-        {
-//            std::cout << std::endl;
-            _display_canonical_guesses(g, candidate_guesses, counter);
-        }
+//        if (g.is_singleton())
+//        {
+//            for (const Codeword &guess : g.sequence())
+//                std::cout << guess << " ";
+//            std::cout << "-> all" << std::endl;
+//        }
+//        else
+//        {
+//            std::cout << g.sequence().back() << std::endl;
+//            _display_canonical_guesses(g, candidate_guesses, counter);
+//        }
+        _display_canonical_guesses(g, candidate_guesses, counter);
     }
 }
 
-static void display_canonical_guesses(const CodewordRules &rules)
+void display_canonical_guesses(const CodewordRules &rules)
 {
     // TODO: add Codeword::enumerate()
     CodewordPopulation population(rules);
     std::vector<Codeword> candidate_guesses(population.begin(), population.end());
-    AutomorphismGroup group(rules);
+    CanonicalCodewordSequence sequence(rules);
+
     size_t counter = 0;
-    _display_canonical_guesses(group, candidate_guesses, counter);
+    _display_canonical_guesses(sequence, candidate_guesses, counter);
     std::cout << "*** Counter = " << counter << std::endl;
 }
 

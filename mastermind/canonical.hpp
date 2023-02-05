@@ -1,60 +1,76 @@
 #pragma once
 
 #include "codeword.hpp"
-
-#include <bit>
-#include <bitset>
-#include <cassert>
-#include <concepts>
-
 #include "thirdparty/fixed_capacity_vector"
 
+#include <array>
+#include <cassert>
+#include <concepts>
+#include <cstddef>
 #include <iostream>
-#include <cstdint>
 #include <numeric>
+#include <span>
 #include <vector>
 
 namespace mastermind {
 
-/// Represents a permutation of the index set {0, ..., n-1} of type T,
-/// supporting up to Capacity indices.
-template <std::integral T, size_t Capacity>
-class Permutation
+/// Represents a mapping defined over the index set {0, ..., N-1} of type T
+/// to itself.
+template <std::integral Index, size_t N>
+class Mapping
 {
 public:
-    /// Type of the index.
-    using Index = T;
+    /// Sentinel value returned by `map()` to indicate that an index
+    /// is not mapped.
+    constexpr static const Index not_mapped = Index(-1);
 
-    /// Creates an identity permutation of the given size.
-    constexpr explicit Permutation(size_t size) noexcept : _map(size)
+    /// Creates an empty mapping.
+    constexpr Mapping() noexcept : _map{}, _size{}
     {
-        std::iota(_map.begin(), _map.end(), Index(0));
+        std::fill(_map.begin(), _map.end(), not_mapped);
     }
 
-    /// Updates the permutation to the next one in lexicographical order.
-    ///
-    /// Returns `false` if the updated permutation is the identity
-    /// permutation, or `true` otherwise.
-    constexpr bool next() noexcept
+    template <class Iter>
+    constexpr Mapping(Iter begin, Iter end) noexcept : Mapping()
     {
-        return std::next_permutation(_map.begin(), _map.end());
+        std::copy(begin, end, _map.begin());
+        _size = std::distance(begin, end);
     }
 
-    /// Returns the number of elements in the index set being permuted.
-    constexpr size_t size() const noexcept { return _map.size(); }
+    /// Returns the number of mapped indices.
+    constexpr size_t size() const noexcept { return _size; }
 
-    /// Returns the image of `index` under this permutation.
+    /// Returns the image of `index`, or `not_mapped` if `index` is not mapped.
     constexpr Index map(const Index &index) const noexcept
     {
         assert(index >= 0 && index < _map.size());
         return _map[index];
     }
 
-    /// Returns `true` if this is the identity permutation.
-    constexpr bool is_identity() const noexcept
+    /// Returns the image of `index` if it is already mapped.  Otherwise,
+    /// maps `index` to `image` and returns `image`.
+    constexpr Index map_or_update(const Index &index, const Index &image) noexcept
     {
-        const size_t m = _map.size();
-        for (Index j = 0; j < m; j++)
+        assert(index >= 0 && index < _map.size());
+        assert(image >= 0 && image < _map.size());
+        if (_map[index] == not_mapped)
+        {
+            _map[index] = image;
+            _size++;
+            return image;
+        }
+        else
+            return _map[index];
+    }
+
+    /// Returns `true` if this mapping is the identity permutation of
+    /// the first `n` indices, i.e. {0, 1, ..., n-1}.
+    constexpr bool is_identity(size_t n) const noexcept
+    {
+        if (n != _size)
+            return false;
+
+        for (Index j = 0; j < _size; j++)
         {
             if (_map[j] != j)
                 return false;
@@ -63,190 +79,137 @@ public:
     }
 
 private:
-    /// Stores the inverse permutation, because it is what we will use.
-    std::experimental::fixed_capacity_vector<Index, Capacity> _map;
+    /// `_map[i]` is the image of `i` or `not_mapped`.
+    std::array<Index, N> _map;
+
+    /// Number of mapped indices.
+    std::size_t _size;
 };
 
-/// Represents a bijection from a k-subset of the index set {0, ..., n-1}
-/// to the index set {0, ..., k-1}.  In addition, the bijection is updated
-/// automatically when an unmapped index is queried -- it is automatically
-/// mapped to the least image.
-template <std::integral Index, size_t Capacity>
-class PartialPermutation
-{
-public:
-    static constexpr Index not_mapped = Index(-1);
+/// Represents a permutation of (position) indices {0, ..., m-1}.
+using PositionPermutation = Mapping<PositionIndex, MAX_CODEWORD_LENGTH>;
 
-    /// Creates an empty bijection.
-    constexpr explicit PartialPermutation(size_t n) noexcept
-      : _map(n, not_mapped), _next_image(0)
-    {
-        assert(n >= 0 && n <= Capacity);
-    }
+/// Represents a permutation of the first k letters of the alphabet.
+using AlphabetPermutation = Mapping<AlphabetIndex, MAX_ALPHABET_SIZE>;
 
-    /// Returns `true` if every index in the range {0, ..., n-1} is
-    /// explicitly mapped.
-    constexpr bool is_full() const noexcept
-    {
-        return _next_image == _map.size();
-    }
-
-    /// Returns `true` if every index in the range {0, ..., n-1} is
-    /// explicitly mapped to itself.
-    constexpr bool is_identity() const noexcept
-    {
-        Index index = Index(0);
-        for (Index image : _map)
-        {
-            if (image != index++)
-                return false;
-        }
-        return true;
-    }
-
-    /// Returns the image of `index` under this bijection.
-    ///
-    /// If `index` is not explicitly mapped, it is automatically mapped
-    /// to the least unmapped image and the bijection object is updated.
-    /// That is why this member function is not `const`.
-    constexpr Index map(Index index) noexcept
-    {
-        assert(index >= 0 && index < _map.size());
-        if (_map[index] == not_mapped)
-            _map[index] = _next_image++;
-        return _map[index];
-    }
-
-private:
-    /// `_map[index]` is the image under the bijection, or `not_mapped`
-    /// if `index` is not explicitly mapped.
-    std::experimental::fixed_capacity_vector<Index, Capacity> _map;
-
-    /// The next image to map an unmapped index to.
-    Index _next_image;
-};
-
-/// Bundles an inverse position permutation with a partial alphabet
+/// Bundles an inverse position permutation and a partial alphabet
 /// permutation.
-struct CodewordPermutation
+struct CodewordMorphism
 {
-    /// Represents a permutation of (position) indices {0, ..., m-1}.
-    using PositionPermutation = Permutation<PositionIndex, MAX_CODEWORD_LENGTH>;
-
-    /// Represents a bijection from a subset of k alphabet indices
-    /// in the range {0, ..., n-1} to the first k alphabet indices
-    /// {0, ..., k-1}.  The bijection grows automatically when an
-    /// unmapped index is mapped.
-    using AlphabetPermutation =
-        PartialPermutation<AlphabetIndex, MAX_ALPHABET_SIZE>;
-
     PositionPermutation inverse_position_permutation;
     AlphabetPermutation partial_alphabet_permutation;
-
-    explicit constexpr CodewordPermutation(const CodewordRules &rules) noexcept
-      : inverse_position_permutation(rules.codeword_length()),
-        partial_alphabet_permutation(rules.alphabet_size())
-    {
-    }
 };
 
-/// Represents the set of all automorphisms (permutation of letters and
-/// positions) that map a guess sequence to itself.
-class AutomorphismGroup
+/// Represents a canonical codeword sequence, i.e. one that is the
+/// lexicographical minimum among all codeword sequences isomophic
+/// to it.
+class CanonicalCodewordSequence
 {
 public:
-    /// Creates the automorphism group for an empty guess sequence.
-    explicit AutomorphismGroup(const CodewordRules &rules)
+    /// Creates an empty sequence bound to the given rules.
+    explicit CanonicalCodewordSequence(const CodewordRules &rules)
     {
-        CodewordPermutation perm(rules);
+        const PositionSize m = rules.codeword_length();
+        std::array<PositionIndex, MAX_CODEWORD_LENGTH> map;
+        std::iota(map.begin(), map.begin() + m, PositionIndex(0));
         do
         {
-            _perms.push_back(perm);
+            PositionPermutation inverse_position_perm(map.begin(), map.begin() + m);
+            AlphabetPermutation partial_alphabet_perm;
+            CodewordMorphism morphism {
+                inverse_position_perm, partial_alphabet_perm
+            };
+            _morphisms.push_back(morphism);
         }
-        while (perm.inverse_position_permutation.next());
+        while (std::next_permutation(map.begin(), map.begin() + m));
     }
 
-    /// Returns `true` if this automorphism group contains exactly one
-    /// automorphism, which is necessarily the identity morphism.
+    /// Returns `true` if there is no other codeword sequence that is
+    /// isomorphic to this one under the given rules.
     constexpr bool is_singleton() const noexcept
     {
-        assert(!_perms.empty());
-        if (_perms.size() == 1)
-        {
-            const CodewordPermutation &perm = _perms.front();
-            assert(perm.inverse_position_permutation.is_identity());
-            if (perm.partial_alphabet_permutation.is_full())
-            {
-                assert(perm.partial_alphabet_permutation.is_identity());
-                return true;
-            }
-        }
+        assert(!_morphisms.empty());
+        if (_morphisms.size() > 1)
+            return false;
+
+        assert(!_sequence.empty());
         return false;
+//
+//        if (_perms.size() == 1)
+//        {
+//            const CodewordPermutation &perm = _perms.front();
+//            assert(perm.inverse_position_permutation.is_identity());
+//            if (perm.partial_alphabet_permutation.is_full())
+//            {
+//                assert(perm.partial_alphabet_permutation.is_identity());
+//                return true;
+//            }
+//        }
+//        return false;
     }
 
-    /// If `guess` is canonical under the current automorphism, update
-    /// the current automorphism group by appending `guess` to the
-    /// sequence, and returns `true`.  Otherwise, returns `false`.
-    ///
-    /// `guess` is canonical if none of the permutations in the current
-    /// automorphism group maps `guess` to a lexicographically smaller
-    /// image.
-    ///
-    /// Note: The updated automorphism group may be a singleton.
-    ///
-    /// TODO: Some of the code branches might be optimized by
-    /// TODO: studying the structure of automorphism.
-    bool refine(const Codeword &guess)
+    /// Appends `guess` to the sequence and returns `true` if the resulting
+    /// sequence is canonical.  Otherwise, returns `false` and leaves the
+    /// object unchanged.
+    bool extend(const Codeword &guess)
     {
         // TODO: support Codeword::begin() and Codeword::end()
         const LetterSequence letters = guess.letters();
 
-        // The guess is canonical if and only if for every automorphism
-        // in the group, the mapped `guess` is greater than or equal to
-        // `guess` in lexical order.
+        // `guess` is canonical if and only if under every automorphism
+        // that maps the current sequence to itself, the mapped `guess`
+        // is greater than or equal to `guess` in lexicographical order.
 
-        std::vector<CodewordPermutation> perms;
-
-        for (CodewordPermutation perm : _perms)
+        std::vector<CodewordMorphism> morphisms;
+        for (const CodewordMorphism &morphism : _morphisms)
         {
-            // To check whether h := perm(g) < g in lexical order,
+            // Make a copy of the partial alphabet permutation because
+            // it may be updated if `guess` contains an unmapped letter.
+            AlphabetPermutation letter_map(morphism.partial_alphabet_permutation);
+
+            // To compare h := morphism(g) against g in lexical order,
             // we compare h[j] vs g[j] for each j = 0, ..., m-1.
             // Note that h[j] = letter_map[g[inverse_position_map[j]].
-
+            const PositionSize m = letters.size();
             bool is_automorphism = true;
-            const PositionSize m = perm.inverse_position_permutation.size();
-            for (PositionIndex j = 0; j < m && is_automorphism; j++)
+            for (PositionIndex j = 0; j < m; j++)
             {
-                AlphabetIndex index = letters[j];
-                PositionIndex pos = perm.inverse_position_permutation.map(j);
-                AlphabetIndex image = perm.partial_alphabet_permutation.map(letters[pos]);
-
-                if (image < index) // guess is not canonical
+                const AlphabetIndex index = letters[j];
+                const AlphabetIndex image = letter_map.map_or_update(
+                    letters[morphism.inverse_position_permutation.map(j)],
+                    static_cast<PositionIndex>(letter_map.size()));
+                if (image < index) // not canonical
                     return false;
-                if (image > index) // not an automorphism
+                if (image > index)
+                {
                     is_automorphism = false;
+                    break;
+                }
             }
 
             if (is_automorphism)
-                perms.push_back(perm);
+                morphisms.push_back({
+                    morphism.inverse_position_permutation, letter_map
+                });
         }
 
-        _guess_sequence.push_back(guess); // may throw
-        std::swap(perms, _perms);
+        assert(!morphisms.empty());
+        _sequence.push_back(guess);
+        std::swap(morphisms, _morphisms);
         return true;
     }
 
-    constexpr const std::vector<Codeword> &guess_sequence() const
+    constexpr const std::vector<Codeword> &sequence() const
     {
-        return _guess_sequence;
+        return _sequence;
     }
 
 private:
     /// The guess sequence whose automorphism group is represented.
-    std::vector<Codeword> _guess_sequence;
+    std::vector<Codeword> _sequence;
 
-    /// List of all permutations that map `_guess_sequence` to itself.
-    std::vector<CodewordPermutation> _perms;
+    /// List of all codeword morphisms that map `_sequence` to itself.
+    std::vector<CodewordMorphism> _morphisms;
 };
 
 ///// Outputs a codeword permutation to a stream.
@@ -304,8 +267,8 @@ private:
 //#endif
 //}
 
-std::vector<AutomorphismGroup>
-get_canonical_guesses(const AutomorphismGroup &group,
+std::vector<CanonicalCodewordSequence>
+get_canonical_guesses(const CanonicalCodewordSequence &sequence,
                       std::span<const Codeword> candidate_guesses);
 
 } // namespace mastermind
