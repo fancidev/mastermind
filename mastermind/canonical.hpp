@@ -1,11 +1,10 @@
 #pragma once
 
 #include "codeword.hpp"
-#include "thirdparty/fixed_capacity_vector"
 
 #include <array>
 #include <cassert>
-#include <concepts>
+//#include <concepts>
 #include <cstddef>
 #include <iostream>
 #include <numeric>
@@ -16,7 +15,7 @@ namespace mastermind {
 
 /// Represents a mapping defined over the index set {0, ..., N-1} of type T
 /// to itself.
-template <std::integral Index, size_t N>
+template <class Index, size_t N>
 class Mapping
 {
 public:
@@ -25,20 +24,22 @@ public:
     constexpr static const Index not_mapped = Index(-1);
 
     /// Creates an empty mapping.
-    constexpr Mapping() noexcept : _map{}, _size{}
+    constexpr Mapping() noexcept : _map{} //, _size{}
     {
         std::fill(_map.begin(), _map.end(), not_mapped);
     }
 
+    /// Creates a mapping where the first `(end-begin)` indices are
+    /// mapped to the images specified by `begin...end`.
     template <class Iter>
     constexpr Mapping(Iter begin, Iter end) noexcept : Mapping()
     {
         std::copy(begin, end, _map.begin());
-        _size = std::distance(begin, end);
+//        _size = std::distance(begin, end);
     }
 
-    /// Returns the number of mapped indices.
-    constexpr size_t size() const noexcept { return _size; }
+//    /// Returns the number of mapped indices.
+//    constexpr size_t size() const noexcept { return _size; }
 
     /// Returns the image of `index`, or `not_mapped` if `index` is not mapped.
     constexpr Index map(const Index &index) const noexcept
@@ -47,8 +48,8 @@ public:
         return _map[index];
     }
 
-    /// Returns the image of `index` if it is already mapped.  Otherwise,
-    /// maps `index` to `image` and returns `image`.
+    /// Returns the image of `index` if it is mapped.  Otherwise, maps
+    /// `index` to `image` and returns `image`.
     constexpr Index map_or_update(const Index &index, const Index &image) noexcept
     {
         assert(index >= 0 && index < _map.size());
@@ -56,7 +57,7 @@ public:
         if (_map[index] == not_mapped)
         {
             _map[index] = image;
-            _size++;
+//            _size++;
             return image;
         }
         else
@@ -64,15 +65,18 @@ public:
     }
 
     /// Returns `true` if this mapping is the identity permutation of
-    /// the first `n` indices, i.e. {0, 1, ..., n-1}.
+    /// the first `n` indices, {0, ..., n-1}.
     constexpr bool is_identity(size_t n) const noexcept
     {
-        if (n != _size)
-            return false;
-
-        for (Index j = 0; j < _size; j++)
+        assert(n <= _map.size());
+        for (std::size_t j = 0; j < n; j++)
         {
             if (_map[j] != j)
+                return false;
+        }
+        for (std::size_t j = n; j < _map.size(); j++)
+        {
+            if (_map[j] != not_mapped)
                 return false;
         }
         return true;
@@ -82,8 +86,8 @@ private:
     /// `_map[i]` is the image of `i` or `not_mapped`.
     std::array<Index, N> _map;
 
-    /// Number of mapped indices.
-    std::size_t _size;
+//    /// Number of mapped indices.
+//    std::size_t _size;
 };
 
 /// Represents a permutation of (position) indices {0, ..., m-1}.
@@ -108,45 +112,47 @@ class CanonicalCodewordSequence
 public:
     /// Creates an empty sequence bound to the given rules.
     explicit CanonicalCodewordSequence(const CodewordRules &rules)
+      : _rules(rules), _used_letters(0)
     {
-        const PositionSize m = rules.codeword_length();
         std::array<PositionIndex, MAX_CODEWORD_LENGTH> map;
-        std::iota(map.begin(), map.begin() + m, PositionIndex(0));
+        const auto begin = map.begin();
+        const auto end = map.begin() + rules.codeword_length();
+        std::iota(begin, end, PositionIndex(0));
         do
         {
-            PositionPermutation inverse_position_perm(map.begin(), map.begin() + m);
+            PositionPermutation inverse_position_perm(begin, end);
             AlphabetPermutation partial_alphabet_perm;
             CodewordMorphism morphism {
                 inverse_position_perm, partial_alphabet_perm
             };
             _morphisms.push_back(morphism);
         }
-        while (std::next_permutation(map.begin(), map.begin() + m));
+        while (std::next_permutation(begin, end));
     }
 
-    /// Returns `true` if there is no other codeword sequence that is
-    /// isomorphic to this one under the given rules.
-    constexpr bool is_singleton() const noexcept
-    {
-        assert(!_morphisms.empty());
-        if (_morphisms.size() > 1)
-            return false;
-
-        assert(!_sequence.empty());
-        return false;
+//    /// Returns `true` if there is no other codeword sequence that is
+//    /// isomorphic to this one under the given rules.
+//    constexpr bool is_singleton() const noexcept
+//    {
+//        assert(!_morphisms.empty());
+//        if (_morphisms.size() > 1)
+//            return false;
 //
-//        if (_perms.size() == 1)
-//        {
-//            const CodewordPermutation &perm = _perms.front();
-//            assert(perm.inverse_position_permutation.is_identity());
-//            if (perm.partial_alphabet_permutation.is_full())
-//            {
-//                assert(perm.partial_alphabet_permutation.is_identity());
-//                return true;
-//            }
-//        }
+//        assert(!_sequence.empty());
 //        return false;
-    }
+////
+////        if (_perms.size() == 1)
+////        {
+////            const CodewordPermutation &perm = _perms.front();
+////            assert(perm.inverse_position_permutation.is_identity());
+////            if (perm.partial_alphabet_permutation.is_full())
+////            {
+////                assert(perm.partial_alphabet_permutation.is_identity());
+////                return true;
+////            }
+////        }
+////        return false;
+//    }
 
     /// Appends `guess` to the sequence and returns `true` if the resulting
     /// sequence is canonical.  Otherwise, returns `false` and leaves the
@@ -155,17 +161,16 @@ public:
     {
         // TODO: support Codeword::begin() and Codeword::end()
         const LetterSequence letters = guess.letters();
+        size_t used_letters = _used_letters;
 
         // `guess` is canonical if and only if under every automorphism
-        // that maps the current sequence to itself, the mapped `guess`
+        // that maps the current sequence to itself, the image of `guess`
         // is greater than or equal to `guess` in lexicographical order.
 
         std::vector<CodewordMorphism> morphisms;
-        for (const CodewordMorphism &morphism : _morphisms)
+        for (CodewordMorphism morphism : _morphisms)
         {
-            // Make a copy of the partial alphabet permutation because
-            // it may be updated if `guess` contains an unmapped letter.
-            AlphabetPermutation letter_map(morphism.partial_alphabet_permutation);
+            AlphabetIndex next = _used_letters;
 
             // To compare h := morphism(g) against g in lexical order,
             // we compare h[j] vs g[j] for each j = 0, ..., m-1.
@@ -175,9 +180,10 @@ public:
             for (PositionIndex j = 0; j < m; j++)
             {
                 const AlphabetIndex index = letters[j];
-                const AlphabetIndex image = letter_map.map_or_update(
-                    letters[morphism.inverse_position_permutation.map(j)],
-                    static_cast<PositionIndex>(letter_map.size()));
+                const AlphabetIndex image =
+                    morphism.partial_alphabet_permutation.map_or_update(
+                        letters[morphism.inverse_position_permutation.map(j)],
+                        next);
                 if (image < index) // not canonical
                     return false;
                 if (image > index)
@@ -185,31 +191,63 @@ public:
                     is_automorphism = false;
                     break;
                 }
+                if (image == next)
+                    next++;
             }
 
             if (is_automorphism)
-                morphisms.push_back({
-                    morphism.inverse_position_permutation, letter_map
-                });
+            {
+                morphisms.push_back(morphism);
+                used_letters = next;
+            }
         }
 
         assert(!morphisms.empty());
         _sequence.push_back(guess);
         std::swap(morphisms, _morphisms);
+        _used_letters = used_letters;
         return true;
     }
 
-    constexpr const std::vector<Codeword> &sequence() const
+    constexpr std::vector<Codeword>::const_iterator begin() const noexcept
     {
-        return _sequence;
+        return _sequence.begin();
     }
 
+    constexpr std::vector<Codeword>::const_iterator end() const noexcept
+    {
+        return _sequence.end();
+    }
+
+    constexpr std::size_t size() const noexcept { return _sequence.size(); }
+
+    constexpr bool contains(const Codeword &g) const noexcept
+    {
+        return std::find(begin(), end(), g) != end();
+    }
+
+    constexpr Codeword back() const noexcept
+    {
+        return _sequence.back();
+    }
+
+//    constexpr const std::vector<Codeword> &sequence() const
+//    {
+//        return _sequence;
+//    }
+
 private:
-    /// The guess sequence whose automorphism group is represented.
+    /// Rules that codewords in this sequence conform to.
+    CodewordRules _rules;
+
+    /// The canonical codeword sequence.
     std::vector<Codeword> _sequence;
 
     /// List of all codeword morphisms that map `_sequence` to itself.
     std::vector<CodewordMorphism> _morphisms;
+
+    /// Number of letters that appear in the sequence.
+    std::size_t _used_letters;
 };
 
 ///// Outputs a codeword permutation to a stream.

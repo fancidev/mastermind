@@ -126,20 +126,20 @@ void test_breaker(const mastermind::CodewordRules &rules,
     std::cout << "  Max steps: " << worst_steps << std::endl;
 }
 
-static void _display_canonical_guesses(const CanonicalCodewordSequence &group,
+static void _display_canonical_guesses(const CanonicalCodewordSequence &sequence,
                                        std::span<const Codeword> candidate_guesses,
                                        size_t &counter)
 {
-    if (group.sequence().size() >= 2)
+    if (sequence.size() >= 2)
         return;
 
-    std::vector<CanonicalCodewordSequence> guesses =
-        get_canonical_guesses(group, candidate_guesses);
-    for (const CanonicalCodewordSequence &g : guesses)
+    std::vector<CanonicalCodewordSequence> extended_sequences =
+        get_canonical_guesses(sequence, candidate_guesses);
+    for (const CanonicalCodewordSequence &extended_sequence : extended_sequences)
     {
         ++counter;
         std::cout << counter << ">";
-        for (auto cw : g.sequence())
+        for (auto cw : extended_sequence)
             std::cout << " " << cw;
         std::cout << std::endl;
 
@@ -154,7 +154,7 @@ static void _display_canonical_guesses(const CanonicalCodewordSequence &group,
 //            std::cout << g.sequence().back() << std::endl;
 //            _display_canonical_guesses(g, candidate_guesses, counter);
 //        }
-        _display_canonical_guesses(g, candidate_guesses, counter);
+        _display_canonical_guesses(extended_sequence, candidate_guesses, counter);
     }
 }
 
