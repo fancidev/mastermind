@@ -209,24 +209,24 @@ public:
         return true;
     }
 
-    constexpr std::vector<Codeword>::const_iterator begin() const noexcept
+    /*constexpr*/ std::vector<Codeword>::const_iterator begin() const noexcept
     {
         return _sequence.begin();
     }
 
-    constexpr std::vector<Codeword>::const_iterator end() const noexcept
+    /*constexpr*/ std::vector<Codeword>::const_iterator end() const noexcept
     {
         return _sequence.end();
     }
 
-    constexpr std::size_t size() const noexcept { return _sequence.size(); }
+    /*constexpr*/ std::size_t size() const noexcept { return _sequence.size(); }
 
-    constexpr bool contains(const Codeword &g) const noexcept
+    /*constexpr*/ bool contains(const Codeword &g) const noexcept
     {
         return std::find(begin(), end(), g) != end();
     }
 
-    constexpr Codeword back() const noexcept
+    /*constexpr*/ Codeword back() const noexcept
     {
         return _sequence.back();
     }
