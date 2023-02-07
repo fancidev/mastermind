@@ -276,10 +276,10 @@ public:
     /// range.
     constexpr Feedback(size_t a, size_t b)
     {
-        if (!(a >= 0 && a <= MAX_CODEWORD_LENGTH))
+        if (!(a <= MAX_CODEWORD_LENGTH))
             throw std::invalid_argument("a must be between 0 and "
                                         STRINGIFY(MAX_CODEWORD_LENGTH));
-        if (!(b >= 0 && b <= MAX_CODEWORD_LENGTH))
+        if (!(b <= MAX_CODEWORD_LENGTH))
             throw std::invalid_argument("b must be between 0 and "
                                         STRINGIFY(MAX_CODEWORD_LENGTH));
         size_t ab = a + b;
@@ -398,7 +398,7 @@ public:
         for (PositionIndex j = 0; j < m; j++)
         {
             AlphabetIndex i = letters[j];
-            if (!(i >= 0 && i < n))
+            if (!(static_cast<size_t>(i) < n))
                 throw std::invalid_argument("letter out of range");
             if (rules.heterogram() &&
                 std::count(letters.begin(), letters.begin() + j, i) > 0)
