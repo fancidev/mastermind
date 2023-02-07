@@ -22,7 +22,7 @@ jobs:
         run: cmake -B ./build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
       - name: Make
         working-directory: ${{github.workspace}}/mastermind
-        run: cmake --build ./build --config ${{env.BUILD_TYPE}}
+        run: cmake --build ./build --config ${{env.BUILD_TYPE}} --verbose
       - name: Test
         working-directory: ${{github.workspace}}/mastermind/build
         #run: ctest -C ${{env.BUILD_TYPE}}

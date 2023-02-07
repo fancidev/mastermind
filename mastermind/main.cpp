@@ -170,7 +170,7 @@ void display_canonical_guesses(const CodewordRules &rules)
     std::cout << "*** Counter = " << counter << std::endl;
 }
 
-int main(int argc, const char *argv[])
+int main(int /*argc*/, const char ** /*argv*/)
 {
     using namespace mastermind;
 
