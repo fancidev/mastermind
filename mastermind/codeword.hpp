@@ -18,7 +18,7 @@
 #include <string>
 #include <string_view>
 
-#include "thirdparty/fixed_capacity_vector"
+//#include "thirdparty/fixed_capacity_vector"
 
 // ============================================================================
 // Constants
@@ -61,8 +61,8 @@ typedef size_t PositionSize;
 typedef size_t PositionIndex;
 
 /// Represents a sequence of no more than `MAX_CODEWORD_LENGTH` letters.
-using LetterSequence = std::experimental::fixed_capacity_vector<
-    AlphabetIndex, MAX_CODEWORD_LENGTH>;
+//using LetterSequence = std::experimental::fixed_capacity_vector<
+//    AlphabetIndex, MAX_CODEWORD_LENGTH>;
 
 /// Defines the attributes that secrets and guesses must adhere to.
 class CodewordRules // TODO: rename to CodewordAttributes?
@@ -357,8 +357,8 @@ constexpr T cyclic_mask(size_t bits_in_group, size_t num_groups)
 class Codeword
 {
 public:
-    using letter_vector = std::experimental::fixed_capacity_vector<
-        AlphabetIndex, MAX_CODEWORD_LENGTH>;
+//    using letter_vector = std::experimental::fixed_capacity_vector<
+//        AlphabetIndex, MAX_CODEWORD_LENGTH>;
 
     /// Creates an empty codeword, i.e. one with empty alphabet, zero length,
     /// and no particular structure.
@@ -372,13 +372,14 @@ public:
         _alphabet_mask{},
         _alphabet_size(rules.alphabet_size())
     {
-        const PositionSize m = rules.codeword_length();
-        letter_vector letters(m);
+        std::array<AlphabetIndex, MAX_CODEWORD_LENGTH> letters;
+        auto begin = letters.begin();
+        auto end = letters.begin() + rules.codeword_length();
         if (rules.heterogram())
-        {
-            std::iota(letters.begin(), letters.end(), AlphabetIndex(0));
-        }
-        _set_letters(letters);
+            std::iota(begin, end, AlphabetIndex(0));
+        else
+            std::fill(begin, end, AlphabetIndex(0));
+        _set_letters(std::span<AlphabetIndex>(begin, end));
     }
 
     /// Creates a codeword with the given letters and attributes.
@@ -442,13 +443,17 @@ public:
         return std::countr_zero(_position_mask >> (j * n));
     }
 
-    constexpr LetterSequence letters() const noexcept
+    template <class Iter> // output iterator
+    constexpr Iter copy_letters(Iter output) const noexcept
     {
-        const PositionSize m = length();
-        LetterSequence letters(m);
-        for (PositionIndex j = 0; j < m; j++)
-            letters[j] = get(j);
-        return letters;
+        const AlphabetSize n = alphabet_size();
+        mask_type position_mask = _position_mask;
+        while (position_mask)
+        {
+            *output++ = std::countr_zero(position_mask);
+            position_mask >>= n;
+        }
+        return output;
     }
 
     /// Returns the number of times the i-th letter of the alphabet appears
@@ -526,7 +531,7 @@ public:
         if (s.size() != m)
             throw std::invalid_argument("codeword length does not conform");
 
-        Codeword::letter_vector letters(m);
+        std::array<AlphabetIndex, MAX_CODEWORD_LENGTH> letters;
         for (PositionIndex j = 0; j < m; j++)
         {
             size_t i = codeword.alphabet().find(s[j]);
@@ -535,12 +540,12 @@ public:
                                             "not in the alphabet");
             letters[j] = static_cast<AlphabetIndex>(i);
         }
-        codeword._set_letters(letters);
+        codeword._set_letters(std::span<AlphabetIndex>(letters.begin(), m));
         return is;
     }
 
 private:
-    constexpr void _set_letters(std::span<AlphabetIndex> letters) noexcept
+    constexpr void _set_letters(std::span<const AlphabetIndex> letters) noexcept
     {
         const AlphabetSize n = _alphabet_size;
         const PositionSize m = letters.size();

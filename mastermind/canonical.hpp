@@ -159,8 +159,8 @@ public:
     /// object unchanged.
     bool extend(const Codeword &guess)
     {
-        // TODO: support Codeword::begin() and Codeword::end()
-        const LetterSequence letters = guess.letters();
+        std::array<AlphabetIndex, MAX_CODEWORD_LENGTH> letters;
+        guess.copy_letters(letters.begin());
         size_t used_letters = _used_letters;
 
         // `guess` is canonical if and only if under every automorphism
@@ -175,7 +175,7 @@ public:
             // To compare h := morphism(g) against g in lexical order,
             // we compare h[j] vs g[j] for each j = 0, ..., m-1.
             // Note that h[j] = letter_map[g[inverse_position_map[j]].
-            const PositionSize m = letters.size();
+            const PositionSize m = _rules.codeword_length();
             bool is_automorphism = true;
             for (PositionIndex j = 0; j < m; j++)
             {
