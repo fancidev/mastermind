@@ -49,11 +49,13 @@ void play(const mastermind::CodewordRules &rules)
         if (s == "quit")
             break;
 
-        Codeword guess(rules);
+        Codeword guess;
         try
         {
             if (!(std::istringstream(s) >> guess))
                 throw std::invalid_argument("cannot read guess");
+            if (!guess.conforms_to(rules))
+                throw std::invalid_argument("guess does not conform to rules");
         }
         catch (const std::invalid_argument &ex)
         {
@@ -170,7 +172,7 @@ void display_canonical_guesses(const CodewordRules &rules)
     std::cout << "*** Counter = " << counter << std::endl;
 }
 
-int main(int /*argc*/, const char ** /*argv*/)
+int main(int argc, const char **argv)
 {
     using namespace mastermind;
 
@@ -178,16 +180,16 @@ int main(int /*argc*/, const char ** /*argv*/)
 
 #if 1
     display_canonical_guesses(rules);
-    return 0;
+    //return 0;
 #endif
 
-#if 0
+#if 1
     AlphabetSize n = rules.alphabet_size();
-    PositionSize m = rules.codeword_length();
-    bool heterogram = rules.heterogram();
+    CodewordSize m = rules.codeword_size();
+    bool is_heterogram = rules.is_heterogram();
 
 //    self_play(rules);
-#if 1
+#if 0
     const char *heuristics[] = {
         "maxparts", // "maxparts~", "minavg", "minavg~", "minmax", "minmax~", "entropy", "entropy~",
     };
@@ -223,7 +225,7 @@ int main(int /*argc*/, const char ** /*argv*/)
         switch (opt[1])
         {
             case 'd':
-                heterogram = true;
+                is_heterogram = true;
                 break;
             case 'h':
                 return usage(nullptr);
@@ -240,7 +242,7 @@ int main(int /*argc*/, const char ** /*argv*/)
 
     try
     {
-        rules = mastermind::CodewordRules(n, m, heterogram);
+        rules = mastermind::CodewordRules(n, m, is_heterogram);
     }
     catch (const std::invalid_argument &ex)
     {
@@ -249,9 +251,9 @@ int main(int /*argc*/, const char ** /*argv*/)
 
     std::cout << "Codeword rules: " << rules << std::endl;
     std::cout << "  Alphabet size: " << rules.alphabet_size() << std::endl;
-    std::cout << "  Codeword length: " << rules.codeword_length() << std::endl;
-    std::cout << "  Requires hetero: " << rules.heterogram() <<  std::endl;
-    std::cout << "Perfect match is " <<
+    std::cout << "  Codeword size: " << rules.codeword_size() << std::endl;
+    std::cout << "  Is heterogram: " << std::boolalpha << rules.is_heterogram() << std::endl;
+    std::cout << "  Perfect match: " <<
         Feedback::perfect_match(rules) << std::endl;
 
     CodewordPopulation population(rules);

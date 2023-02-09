@@ -91,10 +91,10 @@ private:
 };
 
 /// Represents a permutation of (position) indices {0, ..., m-1}.
-using PositionPermutation = Mapping<PositionIndex, MAX_CODEWORD_LENGTH>;
+using PositionPermutation = Mapping<Position, MAX_CODEWORD_SIZE>;
 
 /// Represents a permutation of the first k letters of the alphabet.
-using AlphabetPermutation = Mapping<AlphabetIndex, MAX_ALPHABET_SIZE>;
+using AlphabetPermutation = Mapping<Letter, MAX_ALPHABET_SIZE>;
 
 /// Bundles an inverse position permutation and a partial alphabet
 /// permutation.
@@ -114,10 +114,10 @@ public:
     explicit CanonicalCodewordSequence(const CodewordRules &rules)
       : _rules(rules), _used_letters(0)
     {
-        std::array<PositionIndex, MAX_CODEWORD_LENGTH> map;
+        std::array<Position, MAX_CODEWORD_SIZE> map;
         const auto begin = map.begin();
-        const auto end = map.begin() + rules.codeword_length();
-        std::iota(begin, end, PositionIndex(0));
+        const auto end = map.begin() + rules.codeword_size();
+        std::iota(begin, end, Position(0));
         do
         {
             PositionPermutation inverse_position_perm(begin, end);
@@ -159,8 +159,8 @@ public:
     /// object unchanged.
     bool extend(const Codeword &guess)
     {
-        std::array<AlphabetIndex, MAX_CODEWORD_LENGTH> letters;
-        guess.copy_letters(letters.begin());
+        std::array<Letter, MAX_CODEWORD_SIZE> letters;
+        std::copy(guess.begin(), guess.end(), letters.begin());
         size_t used_letters = _used_letters;
 
         // `guess` is canonical if and only if under every automorphism
@@ -170,17 +170,17 @@ public:
         std::vector<CodewordMorphism> morphisms;
         for (CodewordMorphism morphism : _morphisms)
         {
-            AlphabetIndex next = _used_letters;
+            Letter next = _used_letters;
 
             // To compare h := morphism(g) against g in lexical order,
             // we compare h[j] vs g[j] for each j = 0, ..., m-1.
             // Note that h[j] = letter_map[g[inverse_position_map[j]].
-            const PositionSize m = _rules.codeword_length();
+            const CodewordSize m = _rules.codeword_size();
             bool is_automorphism = true;
-            for (PositionIndex j = 0; j < m; j++)
+            for (Position j = 0; j < m; j++)
             {
-                const AlphabetIndex index = letters[j];
-                const AlphabetIndex image =
+                const Letter index = letters[j];
+                const Letter image =
                     morphism.partial_alphabet_permutation.map_or_update(
                         letters[morphism.inverse_position_permutation.map(j)],
                         next);

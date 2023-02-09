@@ -18,29 +18,21 @@
 #include <string>
 #include <string_view>
 
-//#include "thirdparty/fixed_capacity_vector"
-
 // ============================================================================
 // Constants
 // ============================================================================
 
-/// Maximum supported alphabet size times codeword length.  This value
-/// is limited by the internal storage type of Codeword.
-#define MAX_ALPHABET_SIZE_X_CODEWORD_LENGTH 60
+/// Maximum number of letters allowed in an alphabet.
+#define MAX_ALPHABET_SIZE 10
 
-/// Maximum number of letters supported in the alphabet.  This value is
-/// limited by the internal storage type of Codeword.
-#define MAX_ALPHABET_SIZE 15
-
-/// Maximum number of letters supported in a codeword.  This is a soft
-/// limit that restricts solver to practical problem scale.
-#define MAX_CODEWORD_LENGTH 6
+/// Maximum number of letters allowed in a codeword.
+#define MAX_CODEWORD_SIZE 6
 
 /// The alphabet used to format codewords as strings.
-#define ALPHABET "0123456789ABCDE"
+#define ALPHABET "0123456789"
 
 static_assert(sizeof(ALPHABET) / sizeof(ALPHABET[0]) - 1 == MAX_ALPHABET_SIZE,
-              "ALPHABET must contain MAX_ALPHABET_SIZE characters");
+              "ALPHABET must contain MAX_ALPHABET_SIZE letters");
 
 /// Helper macro that converts its argument to a string.
 #define STRINGIFY(x) _STRINGIFY(x)
@@ -51,18 +43,14 @@ namespace mastermind {
 /// Typedef to represent the number of letters in an alphabet.
 typedef size_t AlphabetSize;
 
-/// Typedef to represent an index into a letter in an alphabet.
-typedef size_t AlphabetIndex;
+/// Typedef to represent an index into the alphabet.
+typedef size_t Letter;
 
 /// Typedef to represent the number of letters in a codeword.
-typedef size_t PositionSize;
+typedef size_t CodewordSize;
 
-/// Typedef to represent an index into a letter in a codeword.
-typedef size_t PositionIndex;
-
-/// Represents a sequence of no more than `MAX_CODEWORD_LENGTH` letters.
-//using LetterSequence = std::experimental::fixed_capacity_vector<
-//    AlphabetIndex, MAX_CODEWORD_LENGTH>;
+/// Typedef to represent an index into a codeword.
+typedef size_t Position;
 
 /// Defines the attributes that secrets and guesses must adhere to.
 class CodewordRules // TODO: rename to CodewordAttributes?
@@ -73,37 +61,32 @@ public:
     /// Throws `std::invalid_argument` if any of the following requirements
     /// are not satisfied:
     ///
-    /// - `1 <= alphabet_size <= MAX_ALPHABET_SIZE`
-    /// - `1 <= codeword_length <= MAX_CODEWORD_LENGTH`
-    /// - `alphabet_size*codeword_length <= MAX_ALPHABET_SIZE_X_CODEWORD_LENGTH`
-    /// - `heterogram` is false or `alphabet_size >= codeword_length`
+    /// - `1 <= alphabet_size <= MAX_ALPHABET_SIZE
+    /// - `1 <= codeword_size <= MAX_CODEWORD_SIZE
+    /// - `alphabet_size >= codeword_size` if `is_heterogram` is true
     ///
     constexpr CodewordRules(AlphabetSize alphabet_size,
-                            PositionSize codeword_length,
-                            bool heterogram)
+                            CodewordSize codeword_size,
+                            bool is_heterogram)
       : _alphabet_size(alphabet_size),
-        _codeword_length(codeword_length),
-        _heterogram(heterogram)
+        _codeword_size(codeword_size),
+        _is_heterogram(is_heterogram)
     {
         if (!(alphabet_size >= 1 && alphabet_size <= MAX_ALPHABET_SIZE))
-            throw std::invalid_argument("alphabet size must be between 1 and "
+            throw std::invalid_argument("alphabet_size must be between 1 and "
                                         STRINGIFY(MAX_ALPHABET_SIZE));
-        if (!(codeword_length >= 1 && codeword_length <= MAX_CODEWORD_LENGTH))
-            throw std::invalid_argument("codeword length must be between 1 and "
-                                        STRINGIFY(MAX_CODEWORD_LENGTH));
-        if (!(alphabet_size * codeword_length <=
-              MAX_ALPHABET_SIZE_X_CODEWORD_LENGTH))
-            throw std::invalid_argument(
-                "codeword length times alphabet size must not exceed "
-                STRINGIFY(MAX_ALPHABET_SIZE_X_CODEWORD_LENGTH));
-        if (heterogram && alphabet_size < codeword_length)
-            throw std::invalid_argument(
-                "alphabet cannot be smaller than codeword for heterograms");
+        if (!(codeword_size >= 1 && codeword_size <= MAX_CODEWORD_SIZE))
+            throw std::invalid_argument("codeword_size must be between 1 and "
+                                        STRINGIFY(MAX_CODEWORD_SIZE));
+        if (is_heterogram && alphabet_size < codeword_size)
+            throw std::invalid_argument("alphabet_size must be greater than "
+                                        "or equal to codeword_size for "
+                                        "heterograms");
     }
 
     /// Creates a rule set with standard Mastermind rules.
     constexpr CodewordRules() noexcept
-      : CodewordRules(AlphabetSize(6), PositionSize(4), false)
+      : CodewordRules(AlphabetSize(6), CodewordSize(4), false)
     {
     }
 
@@ -114,20 +97,19 @@ public:
     }
 
     /// Returns the number of letters in the codeword.
-    constexpr PositionSize codeword_length() const noexcept
+    constexpr CodewordSize codeword_size() const noexcept
     {
-        return _codeword_length;
+        return _codeword_size;
     }
 
-    /// Returns `true` if no letter in the codeword is allowed to appear
-    /// more than once.
-    constexpr bool heterogram() const noexcept { return _heterogram; }
+    /// Returns `true` every letter in the codeword may appear only once.
+    constexpr bool is_heterogram() const noexcept { return _is_heterogram; }
 
-    /// Returns the alphabet from which letters in this codeword are drawn.
-    constexpr std::string_view alphabet() const noexcept
-    {
-        return std::string_view(ALPHABET, _alphabet_size);
-    }
+//    /// Returns the alphabet from which letters in this codeword are drawn.
+//    constexpr std::string_view alphabet() const noexcept
+//    {
+//        return std::string_view(ALPHABET, _alphabet_size);
+//    }
 
     /// Default equality operators by member comparison.
     constexpr bool operator==(const CodewordRules &) const noexcept = default;
@@ -155,8 +137,8 @@ public:
     operator <<(std::basic_ostream<CharT, Traits> &os,
                 const CodewordRules &rules)
     {
-        os << rules.alphabet_size() << CharT('x') << rules.codeword_length();
-        if (rules.heterogram())
+        os << rules.alphabet_size() << CharT('x') << rules.codeword_size();
+        if (rules.is_heterogram())
             os << CharT('h');
         return os;
     }
@@ -166,11 +148,10 @@ private:
     AlphabetSize _alphabet_size;
 
     /// Number of letters in the codeword.
-    PositionSize _codeword_length;
+    CodewordSize _codeword_size;
 
-    /// `true` if no letter in the codeword is allowed to appear
-    /// more than once.
-    bool _heterogram;
+    /// `true` if every letter in the codeword may appear only once.
+    bool _is_heterogram;
 };
 
 /// Helper function used by the Feedback class to generate the mapping
@@ -262,7 +243,7 @@ public:
 
     /// Maximum number of formally valid distinct feedbacks.
     static constexpr size_t MaxOutcomes =
-        (MAX_CODEWORD_LENGTH + 1) * (MAX_CODEWORD_LENGTH + 2) / 2;
+        (MAX_CODEWORD_SIZE + 1) * (MAX_CODEWORD_SIZE + 2) / 2;
 
     static_assert(MaxOutcomes - 1 <= std::numeric_limits<ordinal_type>::max(),
                   "ordinal_type is not large enough for MAX_CODEWORD_LENGTH");
@@ -276,16 +257,16 @@ public:
     /// range.
     constexpr Feedback(size_t a, size_t b)
     {
-        if (!(a <= MAX_CODEWORD_LENGTH))
+        if (!(a <= MAX_CODEWORD_SIZE))
             throw std::invalid_argument("a must be between 0 and "
-                                        STRINGIFY(MAX_CODEWORD_LENGTH));
-        if (!(b <= MAX_CODEWORD_LENGTH))
+                                        STRINGIFY(MAX_CODEWORD_SIZE));
+        if (!(b <= MAX_CODEWORD_SIZE))
             throw std::invalid_argument("b must be between 0 and "
-                                        STRINGIFY(MAX_CODEWORD_LENGTH));
+                                        STRINGIFY(MAX_CODEWORD_SIZE));
         size_t ab = a + b;
-        if (!(ab <= MAX_CODEWORD_LENGTH))
+        if (!(ab <= MAX_CODEWORD_SIZE))
             throw std::invalid_argument("(a + b) must be between 0 and "
-                                        STRINGIFY(MAX_CODEWORD_LENGTH));
+                                        STRINGIFY(MAX_CODEWORD_SIZE));
 
         _ordinal = static_cast<ordinal_type>((ab+1)*ab/2+a);
     }
@@ -306,7 +287,7 @@ public:
     /// given rule set.
     static constexpr Feedback perfect_match(const CodewordRules &rules) noexcept
     {
-        return Feedback(rules.codeword_length(), 0);
+        return Feedback(rules.codeword_size(), 0);
     }
 
 //    /// Creates a feedback from an input string in the form "1A2B".
@@ -337,7 +318,7 @@ private:
     ordinal_type _ordinal;
 
     static constexpr std::array<std::pair<size_t, size_t>, MaxOutcomes>
-        _outcomes = generate_outcomes<MAX_CODEWORD_LENGTH>();
+        _outcomes = generate_outcomes<MAX_CODEWORD_SIZE>();
 };
 
 /// Returns a bit pattern of type T
@@ -357,153 +338,123 @@ constexpr T cyclic_mask(size_t bits_in_group, size_t num_groups)
 class Codeword
 {
 public:
-//    using letter_vector = std::experimental::fixed_capacity_vector<
-//        AlphabetIndex, MAX_CODEWORD_LENGTH>;
-
-    /// Creates an empty codeword, i.e. one with empty alphabet, zero length,
-    /// and no particular structure.
+    /// Creates an empty codeword.
     constexpr Codeword() noexcept : _position_mask(0), _alphabet_mask(0) {}
 
-    /// Creates a codeword equal to the lexical minimum with the given
-    /// attributes.
-    constexpr Codeword(const CodewordRules &rules) noexcept
-      : _position_mask{},
-        _heterogram(rules.heterogram()),
-        _alphabet_mask{},
-        _alphabet_size(rules.alphabet_size())
-    {
-        std::array<AlphabetIndex, MAX_CODEWORD_LENGTH> letters;
-        auto begin = letters.begin();
-        auto end = letters.begin() + rules.codeword_length();
-        if (rules.heterogram())
-            std::iota(begin, end, AlphabetIndex(0));
-        else
-            std::fill(begin, end, AlphabetIndex(0));
-        _set_letters(std::span<AlphabetIndex>(begin, end));
-    }
-
-    /// Creates a codeword with the given letters and attributes.
+    /// Creates a codeword with the given letters.
     ///
-    /// Throws `std::invalid_argument` if the letters do not conform to the
-    /// attributes.
-    constexpr Codeword(std::span<AlphabetIndex> letters,
-                       const CodewordRules &rules)
-      : Codeword(rules)
+    /// Throws `std::invalid_argument` if the codeword cannot be represented.
+    template <class Iter> // forward iterator
+    constexpr Codeword(Iter begin, Iter end)
+      : _position_mask(0), _alphabet_mask(0)
     {
-        const AlphabetSize n = rules.alphabet_size();
-        const PositionSize m = rules.codeword_length();
-        if (letters.size() != m)
-            throw std::invalid_argument("letters length does not conform");
-
-        for (PositionIndex j = 0; j < m; j++)
+        size_t m = 0;
+        for (Iter it = begin; it != end; ++it, ++m)
         {
-            AlphabetIndex i = letters[j];
-            if (!(static_cast<size_t>(i) < n))
-                throw std::invalid_argument("letter out of range");
-            if (rules.heterogram() &&
-                std::count(letters.begin(), letters.begin() + j, i) > 0)
-                throw std::invalid_argument("heterogram expected");
-        }
+            if (m >= MAX_CODEWORD_SIZE)
+                throw std::invalid_argument("codeword too long");
 
-        _set_letters(letters);
+            Letter i = *it;
+            if (!(static_cast<size_t>(i) < MAX_ALPHABET_SIZE))
+                throw std::invalid_argument("letter out of range");
+
+            _position_mask |= (mask_type(1) << (m * MAX_ALPHABET_SIZE + i));
+
+            const mask_type one = 1;
+            const mask_type mask = (one << MAX_CODEWORD_SIZE) - one;
+            int k = static_cast<int>(i) * MAX_CODEWORD_SIZE;
+            _alphabet_mask |= (_alphabet_mask << 1) & (mask << k);
+            _alphabet_mask |= one << k;
+        }
     }
 
-    /// Returns the length of the codeword (in number of letters).
-    constexpr PositionSize length() const noexcept
+    /// Returns the number of letters in the codeword.
+    constexpr CodewordSize codeword_size() const noexcept
     {
         return std::popcount(_position_mask);
     }
 
-    /// Returns the size of the alphabet from which the codeword is drawn.
+    /// Returns the minimum size of the alphabet needed to represent
+    /// the codeword.  It is equal to the maximum letter plus one,
+    /// or zero if the codeword is empty.
     constexpr AlphabetSize alphabet_size() const noexcept
     {
-        return _alphabet_size;
+        constexpr int M = MAX_CODEWORD_SIZE;
+        static_assert(M > 0, "MAX_CODEWORD_SIZE must be greater than zero");
+        return (std::bit_width(_alphabet_mask) + M - 1) / M;
     }
 
-    /// Returns `true` if no letter in the codeword is *allowed* to appear
-    /// more than once.
-    ///
-    /// Note: A return value of `false` does not imply the codeword is not
-    /// a heterogram; it just means the codeword is not *required* to be a
-    /// heterogram.
-    constexpr bool heterogram() const noexcept { return _heterogram; }
-
-    /// Returns the alphabet from which letters in this codeword are drawn.
-    constexpr std::string_view alphabet() const noexcept
+    /// Returns `true` if no letter in the codeword appears more than once.
+    constexpr bool is_heterogram() const noexcept
     {
-        return std::string_view(ALPHABET, _alphabet_size);
+        return !(_alphabet_mask & ~_alphabet_probe);
     }
 
-    /// Gets the letter at the given position.
-    constexpr AlphabetIndex get(PositionIndex j) const noexcept
-    {
-        assert(j >= 0 && j < length());
-        const AlphabetSize n = alphabet_size();
-        assert((_position_mask >> (j * n)) != 0);
-        return std::countr_zero(_position_mask >> (j * n));
-    }
-
-    template <class Iter> // output iterator
-    constexpr Iter copy_letters(Iter output) const noexcept
-    {
-        const AlphabetSize n = alphabet_size();
-        mask_type position_mask = _position_mask;
-        while (position_mask)
-        {
-            *output++ = std::countr_zero(position_mask);
-            position_mask >>= n;
-        }
-        return output;
-    }
-
-    /// Returns the number of times the i-th letter of the alphabet appears
-    /// in the codeword.
-    constexpr size_t get_frequency(AlphabetIndex i) const noexcept
-    {
-        const PositionSize m = length();
-        const AlphabetSize n = alphabet_size();
-        assert(i >= 0 && i < n);
-
-        const mask_type mask = cyclic_mask<mask_type>(n, m);
-        return std::popcount(_alphabet_mask & (mask << i));
-    }
-
-//    /// Returns `true` if every letter in the codeword appears exactly once
-//    /// in the codeword.  (Note: returns `true` for an empty codeword.)
-//    constexpr bool is_heterogram() const noexcept
-//    {
-//        return std::has_single_bit(_alphabet_mask >> alphabet_size());
-//    }
-
-    /// Returns `true` if this codeword adheres to the given rules.
+    /// Returns `true` if this codeword conforms to the given rules.
     constexpr bool conforms_to(const CodewordRules &rules) const noexcept
     {
-        return (length() == rules.codeword_length())
-            && (alphabet_size() == rules.alphabet_size())
-            && (heterogram() == rules.heterogram());
+        return (codeword_size() == rules.codeword_size())
+            && (alphabet_size() <= rules.alphabet_size())
+            && (!rules.is_heterogram() || is_heterogram());
     }
 
     /// Default == and != operators by member comparison.
     constexpr bool operator ==(const Codeword &other) const noexcept = default;
 
-    /// Compares this codeword to another and returns the feedback.
-    friend constexpr Feedback compare(const Codeword &x,
-                                      const Codeword &y) noexcept
+    /// Integral type used to store the codeword's bit-mask.
+    typedef uint64_t mask_type;
+
+    static_assert(std::is_unsigned_v<mask_type>, "mask_type must be unsigned");
+
+    class LetterIterator
     {
-        assert(x.length() == y.length());
-        assert(x.alphabet_size() == y.alphabet_size());
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = Letter;
+        using difference_type = std::ptrdiff_t;
+        using pointer = void;
+        using reference = Letter;
+
+        constexpr LetterIterator(Codeword::mask_type position_mask) noexcept
+          : _position_mask(position_mask) { }
+
+        constexpr reference operator *() const noexcept
+        {
+            assert(_position_mask != mask_type(0));
+            return std::countr_zero(_position_mask);
+        }
+
+        constexpr LetterIterator& operator ++() noexcept
+        {
+            assert(_position_mask != mask_type(0));
+            _position_mask >>= MAX_ALPHABET_SIZE;
+            return *this;
+        }
+
+        constexpr bool operator ==(const LetterIterator &) const noexcept = default;
+
+    private:
+        Codeword::mask_type _position_mask;
+    };
+
+    constexpr LetterIterator begin() const noexcept
+    {
+        return LetterIterator(_position_mask);
+    }
+
+    constexpr LetterIterator end() const noexcept
+    {
+        return LetterIterator(0);
+    }
+
+    /// Compares this codeword to another and returns the feedback.
+    friend constexpr Feedback
+    compare(const Codeword &x, const Codeword &y) noexcept
+    {
         int ab = std::popcount(x._alphabet_mask & y._alphabet_mask);
         int a = std::popcount(x._position_mask & y._position_mask);
         int ordinal = (ab+1)*ab/2+a;
         return Feedback(static_cast<Feedback::ordinal_type>(ordinal));
-    }
-
-    /// Integral type used to store the codeword's bit-mask.
-    typedef uint64_t mask_type;
-
-    constexpr mask_type alphabet_mask() const noexcept
-    {
-        return _alphabet_mask;
     }
 
     /// Writes a codeword to an output stream in the form "1224".
@@ -511,9 +462,8 @@ public:
     friend std::basic_ostream<CharT, Traits> &
     operator <<(std::basic_ostream<CharT, Traits> &os, const Codeword &codeword)
     {
-        PositionSize m = codeword.length();
-        for (PositionIndex j = 0; j < m; j++)
-            os << ALPHABET[codeword.get(j)];
+        for (Letter i : codeword)
+            os << ALPHABET[i];
         return os;
     }
 
@@ -523,76 +473,69 @@ public:
     friend std::basic_istream<CharT, Traits> &
     operator >>(std::basic_istream<CharT, Traits> &is, Codeword &codeword)
     {
-        std::string s;
+        std::basic_string<CharT, Traits> s;
         if (!(is >> s))
             return is;
 
-        const PositionSize m = codeword.length();
-        if (s.size() != m)
-            throw std::invalid_argument("codeword length does not conform");
-
-        std::array<AlphabetIndex, MAX_CODEWORD_LENGTH> letters;
-        for (PositionIndex j = 0; j < m; j++)
+        if (s.size() > MAX_CODEWORD_SIZE)
         {
-            size_t i = codeword.alphabet().find(s[j]);
-            if (i == std::string::npos)
-                throw std::invalid_argument("codeword contains letters "
-                                            "not in the alphabet");
-            letters[j] = static_cast<AlphabetIndex>(i);
+            is.setstate(is.failbit);
+            return is;
         }
-        codeword._set_letters(std::span<AlphabetIndex>(letters.begin(), m));
+
+        std::array<Letter, MAX_CODEWORD_SIZE> letters;
+        for (size_t j = 0; j < s.size(); j++)
+        {
+            char c = static_cast<char>(s[j]);
+            if (static_cast<CharT>(c) != s[j])
+            {
+                is.setstate(is.failbit);
+                return is;
+            }
+
+            size_t i = std::string_view(ALPHABET).find(c);
+            if (i == std::string::npos)
+            {
+                is.setstate(is.failbit);
+                return is;
+            }
+
+            letters[j] = static_cast<Letter>(i);
+        }
+
+        codeword = Codeword(letters.data(), letters.data() + s.size());
         return is;
     }
 
 private:
-    constexpr void _set_letters(std::span<const AlphabetIndex> letters) noexcept
-    {
-        const AlphabetSize n = _alphabet_size;
-        const PositionSize m = letters.size();
+    /// Bit mask where the least significant `M*N` bits are divided
+    /// into M groups of N bits, where bit i in group j is set if
+    /// the j-th position of the codeword contains the letter i.
+    ///
+    /// The remaining (most significant) bits are set to zero.
+    ///
+    /// (`N := MAX_ALPHABET_SIZE`, `M := MAX_CODEWORD_SIZE`.)
+    ///
+    mask_type _position_mask;
 
-        mask_type position_mask {};
-        for (PositionIndex j = 0; j < m; j++)
-        {
-            AlphabetIndex i = letters[j];
-            position_mask |= mask_type(1) << (j * n + i);
-        }
-        _position_mask = position_mask;
+    /// Bit mask where the least significant `M*N` bits are divided
+    /// into N groups of M bits, where bit j in group i is set if
+    /// letter i appears at least (j+1) times in the codeword.
+    ///
+    /// The remaining (most significant) bits are set to zero.
+    ///
+    /// (`N := MAX_ALPHABET_SIZE`, `M := MAX_CODEWORD_SIZE`.)
+    ///
+    mask_type _alphabet_mask;
 
-        mask_type alphabet_mask {};
-        mask_type unity = cyclic_mask<mask_type>(n, m);
-        for (AlphabetIndex i = 0; i < n; i++)
-        {
-            int times = std::popcount(_position_mask & (unity << i));
-            mask_type times_mask = (mask_type(1) << (times * n)) - mask_type(1);
-            alphabet_mask |= (unity & times_mask) << i;
-        }
-        _alphabet_mask = alphabet_mask;
-    }
+    /// Position mask corresponding to codeword `[0] * MAX_CODEWORD_SIZE`.
+    static constexpr mask_type _position_probe =
+        cyclic_mask<mask_type>(MAX_ALPHABET_SIZE, MAX_CODEWORD_SIZE);
 
-private:
-    /// Bitset consisting of m groups of n bits, where bit i in group j
-    /// is set if the letter at position j is the i-th letter of the
-    /// alphabet.  (n := alphabet_size, m := codeword_length)
-    mask_type _position_mask : MAX_ALPHABET_SIZE_X_CODEWORD_LENGTH;
-
-    /// `true` if no letter in the codeword is *allowed* to appear more
-    /// than once.
-    bool _heterogram : 1;
-
-    /// Force alignment on `mask_type` boundary
-    unsigned : 0;
-
-    /// Bitset consisting of m groups of n bits, where bit i in group j
-    /// is set if the i-th letter of the alphabet occurs at least (j + 1)
-    /// times in the codeword.  (n := alphabet_size, m := codeword_length)
-    mask_type _alphabet_mask : MAX_ALPHABET_SIZE_X_CODEWORD_LENGTH;
-
-    /// Number of letters in the alphabet (i.e. n).
-    AlphabetSize _alphabet_size : std::bit_width<unsigned>(MAX_ALPHABET_SIZE);
+    /// Alphabet mask corresponding to codeword `[0, ..., MAX_ALPHABET_SIZE-1]`.
+    static constexpr mask_type _alphabet_probe =
+        cyclic_mask<mask_type>(MAX_CODEWORD_SIZE, MAX_ALPHABET_SIZE);
 };
-
-static_assert(sizeof(Codeword) == 2 * sizeof(Codeword::mask_type),
-              "Codeword storage is not efficiently packed");
 
 /// Returns a vector v with (m + 1) elements (m := codeword length), where
 /// v[j] := the size of the sub-population where the first j letters in the
@@ -604,11 +547,11 @@ sub_population_sizes(const CodewordRules &rules) noexcept
     std::array<size_t, M + 1> sizes {};
     size_t count = 1;
     const size_t n = rules.alphabet_size();
-    const size_t m = rules.codeword_length();
-    for (PositionIndex j = m; j > 0; --j)
+    const size_t m = rules.codeword_size();
+    for (Position j = m; j > 0; --j)
     {
         sizes[j] = count;
-        if (rules.heterogram())
+        if (rules.is_heterogram())
             count *= (n - j + 1);
         else
             count *= n;
@@ -624,7 +567,7 @@ public:
     /// Creates the population from the given rules.
     constexpr CodewordPopulation(const CodewordRules &rules) noexcept
       : _rules(rules),
-        _sub_population_sizes(sub_population_sizes<MAX_CODEWORD_LENGTH>(rules))
+        _sub_population_sizes(sub_population_sizes<MAX_CODEWORD_SIZE>(rules))
     {
     }
 
@@ -641,14 +584,14 @@ public:
     {
         assert(index >= 0 && index < size());
         const size_t n = _rules.alphabet_size();
-        const size_t m = _rules.codeword_length();
+        const size_t m = _rules.codeword_size();
 
-        std::array<AlphabetIndex, MAX_CODEWORD_LENGTH> letters {};
-        if (_rules.heterogram())
+        std::array<Letter, MAX_CODEWORD_SIZE> letters {};
+        if (_rules.is_heterogram())
         {
-            std::array<AlphabetIndex, MAX_ALPHABET_SIZE> alphabet {};
-            std::iota(alphabet.begin(), alphabet.end(), AlphabetIndex(0));
-            for (PositionIndex j = 0; j < m; j++)
+            std::array<Letter, MAX_ALPHABET_SIZE> alphabet {};
+            std::iota(alphabet.begin(), alphabet.end(), Letter(0));
+            for (Position j = 0; j < m; j++)
             {
                 size_t i = index / _sub_population_sizes[j + 1];
                 letters[j] = alphabet[i];
@@ -660,14 +603,14 @@ public:
         }
         else
         {
-            for (PositionIndex j = 0; j < m; j++)
+            for (Position j = 0; j < m; j++)
             {
                 size_t i = index / _sub_population_sizes[j + 1];
-                letters[j] = static_cast<AlphabetIndex>(i);
+                letters[j] = static_cast<Letter>(i);
                 index %= _sub_population_sizes[j + 1];
             }
         }
-        return Codeword(std::span(letters).first(m), _rules);
+        return Codeword(letters.data(), letters.data() + m);
     }
 
     class Iterator
@@ -686,13 +629,7 @@ public:
         constexpr reference operator *() const noexcept
         { return _owner->get(_index); }
 
-//        constexpr Iterator& operator +=(difference_type d) noexcept
-//        { _index += d; return *this; }
-
         constexpr Iterator& operator ++() noexcept { ++_index; return *this; }
-
-//        friend constexpr bool operator -(const Iterator &a, const Iterator &b) noexcept
-//        { return a._index - b._index; }
 
         constexpr bool operator <=>(const Iterator &) const noexcept = default;
 
@@ -712,7 +649,7 @@ private:
     /// Vector with (m + 1) elements (m := codeword length), where element j
     /// denotes the size of the sub-population where the first j letters of
     /// a codeword are fixed.
-    std::array<size_t, MAX_CODEWORD_LENGTH + 1> _sub_population_sizes;
+    std::array<size_t, MAX_CODEWORD_SIZE + 1> _sub_population_sizes;
 };
 
 } // namespace mastermind
