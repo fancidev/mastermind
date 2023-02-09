@@ -281,7 +281,7 @@ public:
     constexpr size_t b() const noexcept { return _outcomes[_ordinal].second; }
 
     /// Default comparison operators by member comparison.
-    constexpr int operator <=>(const Feedback &other) const noexcept = default;
+    constexpr auto operator <=>(const Feedback &other) const noexcept = default;
 
     /// Returns the feedback corresponding to a perfect match for a
     /// given rule set.
@@ -631,7 +631,7 @@ public:
 
         constexpr Iterator& operator ++() noexcept { ++_index; return *this; }
 
-        constexpr int operator <=>(const Iterator &) const noexcept = default;
+        constexpr auto operator <=>(const Iterator &) const noexcept = default;
 
     private:
         const CodewordPopulation *_owner;
