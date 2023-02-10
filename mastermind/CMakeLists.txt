@@ -27,4 +27,5 @@ add_test(NAME test_count_6x4  COMMAND $<TARGET_FILE:mastermind> -r 6x4 count)
 add_test(NAME test_count_10p4 COMMAND $<TARGET_FILE:mastermind> -r 10p4 count)
 add_test(NAME test_list_6x4   COMMAND $<TARGET_FILE:mastermind> -r 6x4 list)
 add_test(NAME test_list_10p4  COMMAND $<TARGET_FILE:mastermind> -r 10p4 list)
+add_test(NAME test_filter     COMMAND $<TARGET_FILE:mastermind> -c 0123:2A0B -c 1234:1A1B list)
 

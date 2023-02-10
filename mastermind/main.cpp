@@ -277,10 +277,21 @@ int main(int argc, const char **argv)
 
     CodewordPopulation population(rules);
     std::vector<Codeword> all(population.begin(), population.end());
+    for (const std::pair<Codeword, Feedback> &constraint : constraints)
+    {
+        if (!constraint.first.conforms_to(rules))
+            return usage("invalid constraint");
+        auto it = std::stable_partition(
+            all.begin(), all.end(), [&constraint](const Codeword &secret) {
+            return compare(secret, constraint.first) == constraint.second;
+        });
+        // TODO: make constraint a callable object
+        all.resize(it - all.begin());
+    }
 
     if (action == "count"sv)
     {
-        std::cout << population.size() << std::endl;
+        std::cout << all.size() << std::endl;
     }
     else if (action == "list"sv)
     {

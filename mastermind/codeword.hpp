@@ -530,37 +530,30 @@ public:
     friend std::basic_istream<CharT, Traits> &
     operator >>(std::basic_istream<CharT, Traits> &is, Codeword &codeword)
     {
-        std::basic_string<CharT, Traits> s;
-        if (!(is >> s))
-            return is;
-
-        if (s.size() > MAX_CODEWORD_SIZE)
-        {
-            is.setstate(is.failbit);
-            return is;
-        }
-
         std::array<Letter, MAX_CODEWORD_SIZE> letters;
-        for (size_t j = 0; j < s.size(); j++)
+
+        size_t m = 0;
+        for (int cc; (cc = is.peek()) != Traits::eof(); )
         {
-            char c = static_cast<char>(s[j]);
-            if (static_cast<CharT>(c) != s[j])
-            {
-                is.setstate(is.failbit);
-                return is;
-            }
+            char c = static_cast<char>(cc);
+            if (static_cast<int>(c) != cc)
+                break;
 
             size_t i = std::string_view(ALPHABET).find(c);
             if (i == std::string::npos)
+                break;
+
+            if (m >= MAX_CODEWORD_SIZE)
             {
                 is.setstate(is.failbit);
                 return is;
             }
 
-            letters[j] = static_cast<Letter>(i);
+            letters[m++] = static_cast<Letter>(i);
+            is.get();
         }
 
-        codeword = Codeword(letters.data(), letters.data() + s.size());
+        codeword = Codeword(letters.data(), letters.data() + m);
         return is;
     }
 
