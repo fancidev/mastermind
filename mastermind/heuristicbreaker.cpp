@@ -257,11 +257,11 @@ struct MaximizeEntropy
 ///
 /// If `AdjustPerfectPartition` is true, the perfect partition counts
 /// as 1.5 partitions, making it slightly more favorable.  This makes
-/// limited sense and is merely provided for completeness.
+/// limited sense and is provided for completeness only.
 template <bool AdjustPerfectPartition = false>
 struct MaximizePartitions
 {
-    using score_type = int;
+    using score_type = size_t;
 
     static constexpr const char *name() noexcept
     {
@@ -269,18 +269,17 @@ struct MaximizePartitions
     }
 
     /// Returns the negative number of non-empty partitions (to minimize).
-    static constexpr int evaluate(
+    static constexpr size_t evaluate(
         std::span<const size_t> partition_sizes) noexcept
     {
-        int count = std::count_if(partition_sizes.begin(),
-                                  partition_sizes.end(),
-                                  [](size_t k) { return k > 0; });
+        size_t count = std::count_if(partition_sizes.begin(),
+                                     partition_sizes.end(),
+                                     [](size_t k) { return k > 0; });
 
         if constexpr (AdjustPerfectPartition)
-            count = 2 * count + static_cast<int>(
-                partition_sizes[partition_sizes.size() - 1]);
+            count = 2 * count + partition_sizes.back();
 
-        return -count; // return negative number for minimization
+        return -count; // negate for minimization
     }
 };
 
