@@ -3,7 +3,8 @@ project(Mastermind)
 
 # Set C++ version.
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Treat warnings as errors.
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
@@ -19,3 +20,11 @@ target_compile_options(mastermind PRIVATE
   $<$<CXX_COMPILER_ID:MSVC>:/W4>
   $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic>
 )
+
+# Add tests.
+include(CTest)
+add_test(NAME test_count_6x4  COMMAND $<TARGET_FILE:mastermind> -r 6x4 count)
+add_test(NAME test_count_10p4 COMMAND $<TARGET_FILE:mastermind> -r 10p4 count)
+add_test(NAME test_list_6x4   COMMAND $<TARGET_FILE:mastermind> -r 6x4 list)
+add_test(NAME test_list_10p4  COMMAND $<TARGET_FILE:mastermind> -r 10p4 list)
+
