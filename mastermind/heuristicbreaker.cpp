@@ -261,7 +261,7 @@ struct MaximizeEntropy
 template <bool AdjustPerfectPartition = false>
 struct MaximizePartitions
 {
-    using score_type = size_t;
+    using score_type = int;
 
     static constexpr const char *name() noexcept
     {
@@ -269,7 +269,7 @@ struct MaximizePartitions
     }
 
     /// Returns the negative number of non-empty partitions (to minimize).
-    static constexpr size_t evaluate(
+    static constexpr int evaluate(
         std::span<const size_t> partition_sizes) noexcept
     {
         size_t count = std::count_if(partition_sizes.begin(),
@@ -279,7 +279,7 @@ struct MaximizePartitions
         if constexpr (AdjustPerfectPartition)
             count = 2 * count + partition_sizes.back();
 
-        return -count; // negate for minimization
+        return -static_cast<int>(count); // negate for minimization
     }
 };
 
