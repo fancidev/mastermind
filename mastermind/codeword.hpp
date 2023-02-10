@@ -143,6 +143,39 @@ public:
         return os;
     }
 
+    /// Reads dictionary definition from an input stream, in the form
+    /// "6x4" or "10p4".
+    template <class CharT, class Traits>
+    friend std::basic_istream<CharT, Traits> &
+    operator >>(std::basic_istream<CharT, Traits> &is, CodewordRules &rules)
+    {
+        size_t n, m;
+        CharT sp;
+        if (!(is >> n >> sp >> m))
+            return is;
+
+        bool is_heterogram;
+        if (sp == CharT('x') || sp == CharT('X'))
+            is_heterogram = false;
+        else if (sp == CharT('p') || sp == CharT('P'))
+            is_heterogram = true;
+        else
+        {
+            is.setstate(is.failbit);
+            return is;
+        }
+
+        try
+        {
+            rules = CodewordRules(n, m, is_heterogram);
+        }
+        catch (const std::invalid_argument &)
+        {
+            is.setstate(is.failbit);
+        }
+        return is;
+    }
+
 private:
     /// Number of letters in the alphabet.
     AlphabetSize _alphabet_size;
@@ -248,6 +281,9 @@ public:
     static_assert(MaxOutcomes - 1 <= std::numeric_limits<ordinal_type>::max(),
                   "ordinal_type is not large enough for MAX_CODEWORD_LENGTH");
 
+    /// Creates the feedback "0A0B".
+    constexpr Feedback() noexcept : _ordinal(0) {}
+
     /// Creates a feedback from its ordinal.
     constexpr explicit Feedback(ordinal_type ordinal) noexcept
       : _ordinal(ordinal) {}
@@ -311,6 +347,28 @@ public:
     operator <<(std::basic_ostream<CharT, Traits> &os, const Feedback &feedback)
     {
         return os << feedback.a() << 'A' << feedback.b() << 'B';
+    }
+
+    /// Reads a feedback from an input stream in the form "1A2B".
+    template <class CharT, class Traits>
+    friend std::basic_istream<CharT, Traits> &
+    operator >>(std::basic_istream<CharT, Traits> &is, Feedback &feedback)
+    {
+        size_t a, b;
+        CharT A, B;
+        if (!(is >> a >> A >> b >> B))
+            return is;
+        if (!(a <= MAX_CODEWORD_SIZE
+              && b <= MAX_CODEWORD_SIZE
+              && a + b <= MAX_CODEWORD_SIZE
+              && (A == CharT('A') || A == CharT('a'))
+              && (B == CharT('B') || B == CharT('b'))))
+        {
+            is.setstate(is.failbit);
+            return is;
+        }
+        feedback = Feedback(a, b);
+        return is;
     }
 
 private:
@@ -467,8 +525,7 @@ public:
         return os;
     }
 
-    /// Reads a codeword from an input stream in the form "1224".  The
-    /// codeword's attributes are enforced.
+    /// Reads a codeword from an input stream in the form "1224".
     template <class CharT, class Traits>
     friend std::basic_istream<CharT, Traits> &
     operator >>(std::basic_istream<CharT, Traits> &is, Codeword &codeword)

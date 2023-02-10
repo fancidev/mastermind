@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <string_view>
 
 using namespace mastermind;
 
@@ -15,12 +16,21 @@ int usage(const char *error)
     if (error)
         std::cerr << "error: " << error << std::endl;
     std::cerr <<
-        "usage: mastermind [options]\n"
+        "usage: mastermind [options] action\n"
         "Options:\n"
-        "    -d      require any letter in codeword to appear only once\n"
-        "    -h      display this help text and exit\n"
-        "    -m M    number of letters in codeword (default: 4)\n"
-        "    -n N    number of letters in alphabet (default: 6)\n"
+        "    -c guess:feedback\n"
+        "                Restrict codewords to those that compare as feedback\n"
+        "                to guess.  This option may be specified multiple times.\n"
+        "    -h          Display this help screen and exit\n"
+        "    -l level    (For play mode) Set the difficulty level to one of:\n"
+        "                novice, easy, normal (default), hard, expert\n"
+        "    -r rule     Set codeword rule, such as 6x4 (default), 10p4\n"
+        "action:\n"
+        "    count       Display the number of codewords\n"
+        "    canonical   Display canonical guesses (in lexical order)\n"
+        "    list        Display all codewords (in lexical order)\n"
+        "    play        Make guesses from stdin and get feedbacks from stdout\n"
+        "                until the secret is revealed.  See also the -l option.\n"
         ;
     return error ? 1 : 0;
 }
@@ -96,8 +106,6 @@ void self_play(const mastermind::CodewordRules &rules)
 void test_breaker(const mastermind::CodewordRules &rules,
                   const char *name)
 {
-    using namespace mastermind;
-
     CodewordPopulation population(rules);
     size_t total_steps = 0;
     size_t worst_steps = 0;
@@ -174,21 +182,15 @@ void display_canonical_guesses(const CodewordRules &rules)
 
 int main(int argc, const char **argv)
 {
-    using namespace mastermind;
+    using namespace std::literals;
 
     CodewordRules rules;
 
-#if 1
+#if 0
     display_canonical_guesses(rules);
     //return 0;
 #endif
 
-#if 1
-    AlphabetSize n = rules.alphabet_size();
-    CodewordSize m = rules.codeword_size();
-    bool is_heterogram = rules.is_heterogram();
-
-//    self_play(rules);
 #if 0
     const char *heuristics[] = {
         "maxparts", // "maxparts~", "minavg", "minavg~", "minmax", "minmax~", "entropy", "entropy~",
@@ -202,78 +204,114 @@ int main(int argc, const char **argv)
 
     const std::string options_requring_argument = "mn";
 
+    const char *action = nullptr;
+    int level = 0;
+    std::vector<std::pair<Codeword, Feedback>> constraints;
+
     // Parse command line arguments.
     for (int i = 1; i < argc; i++)
     {
+        if (action != nullptr)
+            return usage("unexpected arguments after action");
+
         const char *opt = argv[i];
-        if (opt[0] != '-')
-            return usage("missing option");
-        if (opt[1] == '\0')
-            return usage("missing option");
-
-        const char *val = nullptr;
-        if (options_requring_argument.find(opt[1]) != std::string::npos)
+        if (opt[0] == '-')
         {
-            if (opt[2])
-                val = &opt[2];
-            else if (i + 1 == argc)
-                return usage("option requires an argument");
-            else
-                val = argv[++i];
-        }
-
-        switch (opt[1])
-        {
-            case 'd':
-                is_heterogram = true;
-                break;
-            case 'h':
+            if (opt[1] == '\0')
+                return usage("missing option");
+            if (opt[2] != '\0')
+                return usage("invalid option");
+            if (opt[1] == 'h')
                 return usage(nullptr);
-            case 'm':
-                m = std::atoi(val);
-                break;
-            case 'n':
-                n = std::atoi(val);
-                break;
-            default:
+            else if (opt[1] == 'r')
+            {
+                if (++i >= argc)
+                    return usage("missing argument");
+                if (!(std::istringstream(argv[i]) >> rules))
+                    return usage("invalid rules supplied to -r option");
+            }
+            else if (opt[1] == 'l')
+            {
+                if (++i >= argc)
+                    return usage("missing argument");
+                const char *val = argv[i];
+                if (val == "novice"sv)
+                    level = -2;
+                else if (val == "easy"sv)
+                    level = -1;
+                else if (val == "normal"sv)
+                    level = 0;
+                else if (val == "hard"sv)
+                    level = 1;
+                else if (val == "expert"sv)
+                    level = 2;
+                else
+                    return usage("invalid level supplied to -l option");
+            }
+            else if (opt[1] == 'c')
+            {
+                if (++i >= argc)
+                    return usage("missing argument");
+                Codeword guess;
+                Feedback feedback;
+                char sp;
+                if (!(std::istringstream(argv[i]) >> guess >> sp >> feedback))
+                    return usage("invalid constraint supplied to -c option");
+                if (sp != ':')
+                    return usage("invalid constraint supplied to -c option");
+                constraints.push_back({guess, feedback});
+            }
+            else
                 return usage("unknown option");
         }
+        else
+        {
+            action = opt;
+        }
     }
 
-    try
-    {
-        rules = mastermind::CodewordRules(n, m, is_heterogram);
-    }
-    catch (const std::invalid_argument &ex)
-    {
-        return usage(ex.what());
-    }
+    (void)level;
 
-    std::cout << "Codeword rules: " << rules << std::endl;
-    std::cout << "  Alphabet size: " << rules.alphabet_size() << std::endl;
-    std::cout << "  Codeword size: " << rules.codeword_size() << std::endl;
-    std::cout << "  Is heterogram: " << std::boolalpha << rules.is_heterogram() << std::endl;
-    std::cout << "  Perfect match: " <<
-        Feedback::perfect_match(rules) << std::endl;
+    if (action == nullptr)
+        return usage("missing action");
 
     CodewordPopulation population(rules);
-    std::cout << "Population size: " << population.size() << std::endl;
-
     std::vector<Codeword> all(population.begin(), population.end());
 
-    std::cout << "First 5:";
-    for (size_t index = 0; index < 5 && index < all.size(); index++)
+    if (action == "count"sv)
     {
-        std::cout << " " << all[index];
+        std::cout << population.size() << std::endl;
     }
-    std::cout << std::endl;
+    else if (action == "list"sv)
+    {
+        for (Codeword codeword : all)
+        {
+            std::cout << codeword << std::endl;
+        }
+    }
+    else
+        return usage("invalid action");
 
-    std::cout << "Last  5:";
-    for (size_t index = std::max<size_t>(5, all.size()) - 5; index < all.size(); index++)
-    {
-        std::cout << " " << all[index];
-    }
-    std::cout << std::endl;
+//    std::cout << "Codeword rules: " << rules << std::endl;
+//    std::cout << "  Alphabet size: " << rules.alphabet_size() << std::endl;
+//    std::cout << "  Codeword size: " << rules.codeword_size() << std::endl;
+//    std::cout << "  Is heterogram: " << std::boolalpha << rules.is_heterogram() << std::endl;
+//    std::cout << "  Perfect match: " <<
+//        Feedback::perfect_match(rules) << std::endl;
+
+//    std::cout << "First 5:";
+//    for (size_t index = 0; index < 5 && index < all.size(); index++)
+//    {
+//        std::cout << " " << all[index];
+//    }
+//    std::cout << std::endl;
+//
+//    std::cout << "Last  5:";
+//    for (size_t index = std::max<size_t>(5, all.size()) - 5; index < all.size(); index++)
+//    {
+//        std::cout << " " << all[index];
+//    }
+//    std::cout << std::endl;
 
 //    Codeword guess = Codeword::from_string("1357", rules);
 //    Codeword secret = Codeword::from_string("2337", rules);
@@ -282,5 +320,4 @@ int main(int argc, const char **argv)
 //        << compare(guess, secret).to_string() << std::endl;
 
     return 0;
-#endif
 }
