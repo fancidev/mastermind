@@ -206,7 +206,7 @@ int main(int argc, const char **argv)
 
     const char *action = nullptr;
     int level = 0;
-    std::vector<std::pair<Codeword, Feedback>> constraints;
+    std::vector<Constraint> constraints;
 
     // Parse command line arguments.
     for (int i = 1; i < argc; i++)
@@ -252,14 +252,10 @@ int main(int argc, const char **argv)
             {
                 if (++i >= argc)
                     return usage("missing argument");
-                Codeword guess;
-                Feedback feedback;
-                char sp;
-                if (!(std::istringstream(argv[i]) >> guess >> sp >> feedback))
+                Constraint constraint;
+                if (!(std::istringstream(argv[i]) >> constraint))
                     return usage("invalid constraint supplied to -c option");
-                if (sp != ':')
-                    return usage("invalid constraint supplied to -c option");
-                constraints.push_back({guess, feedback});
+                constraints.push_back(constraint);
             }
             else
                 return usage("unknown option");
@@ -277,15 +273,11 @@ int main(int argc, const char **argv)
 
     CodewordPopulation population(rules);
     std::vector<Codeword> all(population.begin(), population.end());
-    for (const std::pair<Codeword, Feedback> &constraint : constraints)
+    for (const Constraint &constraint : constraints)
     {
-        if (!constraint.first.conforms_to(rules))
+        if (!constraint.guess.conforms_to(rules))
             return usage("invalid constraint");
-        auto it = std::stable_partition(
-            all.begin(), all.end(), [&constraint](const Codeword &secret) {
-            return compare(secret, constraint.first) == constraint.second;
-        });
-        // TODO: make constraint a callable object
+        auto it = std::stable_partition(all.begin(), all.end(), constraint);
         all.resize(it - all.begin());
     }
 
@@ -309,26 +301,6 @@ int main(int argc, const char **argv)
 //    std::cout << "  Is heterogram: " << std::boolalpha << rules.is_heterogram() << std::endl;
 //    std::cout << "  Perfect match: " <<
 //        Feedback::perfect_match(rules) << std::endl;
-
-//    std::cout << "First 5:";
-//    for (size_t index = 0; index < 5 && index < all.size(); index++)
-//    {
-//        std::cout << " " << all[index];
-//    }
-//    std::cout << std::endl;
-//
-//    std::cout << "Last  5:";
-//    for (size_t index = std::max<size_t>(5, all.size()) - 5; index < all.size(); index++)
-//    {
-//        std::cout << " " << all[index];
-//    }
-//    std::cout << std::endl;
-
-//    Codeword guess = Codeword::from_string("1357", rules);
-//    Codeword secret = Codeword::from_string("2337", rules);
-//    std::cout << "compare(" << guess.to_string("ABCDEFGHIJ") << ", "
-//        << secret.to_string("ABCDEFGHIJ") << ") = "
-//        << compare(guess, secret).to_string() << std::endl;
 
     return 0;
 }

@@ -702,4 +702,46 @@ private:
     std::array<size_t, MAX_CODEWORD_SIZE + 1> _sub_population_sizes;
 };
 
+struct Constraint
+{
+    Codeword guess;    // challenge
+    Feedback feedback; // response
+
+    constexpr bool operator()(const Codeword &secret) const noexcept
+    {
+        return compare(secret, guess) == feedback;
+    }
+
+    /// Writes a constraint to an output stream in the form "1234:1A1B".
+    template <class CharT, class Traits>
+    friend std::basic_ostream<CharT, Traits> &
+    operator <<(std::basic_ostream<CharT, Traits> &os, const Constraint &c)
+    {
+        return os << c.guess << CharT(':') << c.feedback;
+    }
+
+    /// Reads a constraint from an input stream in the form "1234:1A1B".
+    template <class CharT, class Traits>
+    friend std::basic_istream<CharT, Traits> &
+    operator >>(std::basic_istream<CharT, Traits> &is, Constraint &c)
+    {
+        Codeword guess;
+        Feedback feedback;
+        char sp;
+
+        if (!(is >> guess >> sp))
+            return is;
+        if (sp != CharT(':'))
+        {
+            is.setstate(is.failbit);
+            return is;
+        }
+        if (!(is >> feedback))
+            return is;
+
+        c = Constraint{guess, feedback};
+        return is;
+    }
+};
+
 } // namespace mastermind
