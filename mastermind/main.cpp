@@ -18,26 +18,30 @@ int usage(const char *error)
     std::cerr <<
         "usage: mastermind [options] action\n"
         "Options:\n"
+        "    -b breaker  Specify the codebreaker; must be one of:\n"
+        "                simple,minavg(default),minmax,entropy,maxparts\n"
         "    -c guess:feedback\n"
         "                Restrict codewords to those that compare as feedback\n"
         "                to guess.  This option may be specified multiple times.\n"
         "    -h          Display this help screen and exit\n"
-        "    -l level    (For play mode) Set the difficulty level to one of:\n"
+        "    -l level    (For make mode) Set the difficulty level to one of:\n"
         "                novice, easy, normal (default), hard, expert\n"
         "    -r rule     Set codeword rule, such as 6x4 (default), 10p4\n"
+        "    -s secret   (For make mode) Set the secret\n"
         "action:\n"
-        "    count       Display the number of codewords\n"
-        "    canonical   Display canonical guesses (in lexical order)\n"
-        "    list        Display all codewords (in lexical order)\n"
-        "    play        Make guesses from stdin and get feedbacks from stdout\n"
-        "                until the secret is revealed.  See also the -l option.\n"
+        "    count       Display number of possible secrets\n"
+        "    canonical   Display canonical guesses in lexicographical order\n"
+        "    list        Display possible secrets in lexicographical order\n"
+        "    make        Accept guesses from stdin and print feedbacks to stdout\n"
+        "                until the secret is revealed.\n"
+        "    test        Run the codebreaker against the codemaker.\n"
         ;
     return error ? 1 : 0;
 }
 
 void play(const mastermind::CodewordRules &rules)
 {
-    std::unique_ptr<CodeMaker> code_maker(create_code_maker(rules));
+    std::unique_ptr<Codemaker> code_maker(create_static_codemaker(sample(rules)));
 
     for (int round = 1; ; ++round)
     {
@@ -46,16 +50,6 @@ void play(const mastermind::CodewordRules &rules)
 
         std::string s;
         std::cin >> s;
-        if (s == "?")
-        {
-            std::optional<Codeword> secret = code_maker->secret();
-            if (secret.has_value())
-                std::cout << "Secret: " << secret.value() << std::endl;
-            else
-                std::cout << "Secret is not available." << std::endl;
-            --round;
-            continue;
-        }
         if (s == "quit")
             break;
 
@@ -85,8 +79,7 @@ void self_play(const mastermind::CodewordRules &rules)
 {
     using namespace mastermind;
 
-    std::unique_ptr<CodeMaker> maker(create_code_maker(rules));
-    //std::unique_ptr<CodeBreaker> breaker(create_simple_code_breaker(rules));
+    std::unique_ptr<Codemaker> maker(create_static_codemaker(sample(rules)));
     const char *name = "minavg";
     std::unique_ptr<CodeBreaker> breaker(create_heuristic_breaker(rules, name));
 
@@ -111,8 +104,7 @@ void test_breaker(const mastermind::CodewordRules &rules,
     size_t worst_steps = 0;
     for (size_t index = 0; index < population.size(); ++index)
     {
-        std::unique_ptr<CodeMaker> maker(create_code_maker(rules, population.get(index)));
-        //std::unique_ptr<CodeBreaker> breaker(create_simple_code_breaker(rules));
+        std::unique_ptr<Codemaker> maker(create_static_codemaker(population.get(index)));
         std::unique_ptr<CodeBreaker> breaker(create_heuristic_breaker(rules, name));
 
         size_t round = 0;
@@ -206,6 +198,8 @@ int main(int argc, const char **argv)
 
     const char *action = nullptr;
     int level = 0;
+    const char *heuristic = "minavg";
+    std::optional<Codeword> secret;
     std::vector<Constraint> constraints;
 
     // Parse command line arguments.
@@ -229,6 +223,15 @@ int main(int argc, const char **argv)
                     return usage("missing argument");
                 if (!(std::istringstream(argv[i]) >> rules))
                     return usage("invalid rules supplied to -r option");
+            }
+            else if (opt[1] == 's')
+            {
+                if (++i >= argc)
+                    return usage("missing argument");
+                Codeword w;
+                if (!(std::istringstream(argv[i]) >> w))
+                    return usage("invalid secret supplied to -s option");
+                secret = w;
             }
             else if (opt[1] == 'l')
             {
@@ -290,6 +293,30 @@ int main(int argc, const char **argv)
         for (Codeword codeword : all)
         {
             std::cout << codeword << std::endl;
+        }
+    }
+    else if (action == "test"sv)
+    {
+        std::unique_ptr<Codemaker> codemaker;
+        if (secret.has_value())
+            codemaker = create_static_codemaker(secret.value());
+        else if (level == 0)
+            codemaker = create_static_codemaker(sample(rules));
+//        else if (level == -1)
+        else
+            return usage("level not supported");
+
+        std::unique_ptr<CodeBreaker> codebreaker;
+        codebreaker = create_heuristic_breaker(rules, heuristic);
+
+        while (true)
+        {
+            Codeword guess = codebreaker->make_guess();
+            Feedback feedback = codemaker->respond(guess);
+            std::cout << Constraint{guess, feedback} << std::endl;
+            if (feedback == Feedback::perfect_match(rules))
+                break;
+            codebreaker->step(guess, feedback);
         }
     }
     else

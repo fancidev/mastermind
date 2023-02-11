@@ -4,30 +4,25 @@
 
 namespace mastermind {
 
-class StandardCodeMaker : public CodeMaker
+class StaticCodemaker : public Codemaker
 {
 public:
-    constexpr StandardCodeMaker(const CodewordRules &rules,
-                                const Codeword &secret) noexcept
-      : _rules(rules), _secret(secret)
-    {
-        assert(secret.conforms_to(rules));
-    }
+    constexpr StaticCodemaker(const Codeword &secret) noexcept
+      : _secret(secret) {}
 
     virtual Feedback respond(const Codeword &guess) override
     {
         return compare(_secret, guess);
     }
 
-    virtual std::optional<Codeword> secret() const override
-    {
-        return _secret;
-    }
-
 private:
-    CodewordRules _rules;
     Codeword _secret;
 };
+
+std::unique_ptr<Codemaker> create_static_codemaker(const Codeword &secret)
+{
+    return std::make_unique<StaticCodemaker>(secret);
+}
 
 /// Returns a random integer in the range [0, count).
 static size_t get_random_index(size_t count)
@@ -39,21 +34,11 @@ static size_t get_random_index(size_t count)
 }
 
 /// Creates a standard code maker.
-std::unique_ptr<CodeMaker> create_code_maker(
-    const CodewordRules &rules, std::optional<Codeword> secret)
+Codeword sample(const CodewordRules &rules)
 {
-    if (secret.has_value())
-    {
-        if (!secret.value().conforms_to(rules))
-            throw std::invalid_argument("secret does not conform to rules");
-    }
-    else
-    {
-        CodewordPopulation population(rules);
-        size_t index = get_random_index(population.size());
-        secret = population.get(index);
-    }
-    return std::make_unique<StandardCodeMaker>(rules, secret.value());
+    CodewordPopulation population(rules);
+    size_t index = get_random_index(population.size());
+    return population.get(index);
 }
 
 }
