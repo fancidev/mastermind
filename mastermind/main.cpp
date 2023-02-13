@@ -99,12 +99,12 @@ void self_play(const mastermind::CodewordRules &rules)
 void test_breaker(const mastermind::CodewordRules &rules,
                   const char *name)
 {
-    CodewordPopulation population(rules);
+    CodewordSet population(rules);
     size_t total_steps = 0;
     size_t worst_steps = 0;
     for (size_t index = 0; index < population.size(); ++index)
     {
-        std::unique_ptr<Codemaker> maker(create_static_codemaker(population.get(index)));
+        std::unique_ptr<Codemaker> maker(create_static_codemaker(population[index]));
         std::unique_ptr<CodeBreaker> breaker(create_heuristic_breaker(rules, name));
 
         size_t round = 0;
@@ -163,7 +163,7 @@ static void _display_canonical_guesses(const CanonicalCodewordSequence &sequence
 void display_canonical_guesses(const CodewordRules &rules)
 {
     // TODO: add Codeword::enumerate()
-    CodewordPopulation population(rules);
+    CodewordSet population(rules);
     std::vector<Codeword> candidate_guesses(population.begin(), population.end());
     CanonicalCodewordSequence sequence(rules);
 
@@ -274,23 +274,21 @@ int main(int argc, const char **argv)
     if (action == nullptr)
         return usage("missing action");
 
-    CodewordPopulation population(rules);
-    std::vector<Codeword> all(population.begin(), population.end());
+    CodewordSet secrets(rules);
     for (const Constraint &constraint : constraints)
     {
         if (!constraint.guess.conforms_to(rules))
             return usage("invalid constraint");
-        auto it = std::stable_partition(all.begin(), all.end(), constraint);
-        all.resize(it - all.begin());
+        secrets = CodewordSet(secrets, constraint);
     }
 
     if (action == "count"sv)
     {
-        std::cout << all.size() << std::endl;
+        std::cout << secrets.size() << std::endl;
     }
     else if (action == "list"sv)
     {
-        for (Codeword codeword : all)
+        for (Codeword codeword : secrets)
         {
             std::cout << codeword << std::endl;
         }

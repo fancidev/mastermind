@@ -11,12 +11,12 @@
 #include <cstring>
 #include <iterator>
 #include <numeric>
-#include <regex>
 #include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <vector>
 
 // ============================================================================
 // Constants
@@ -105,30 +105,8 @@ public:
     /// Returns `true` every letter in the codeword may appear only once.
     constexpr bool is_heterogram() const noexcept { return _is_heterogram; }
 
-//    /// Returns the alphabet from which letters in this codeword are drawn.
-//    constexpr std::string_view alphabet() const noexcept
-//    {
-//        return std::string_view(ALPHABET, _alphabet_size);
-//    }
-
     /// Default equality operators by member comparison.
     constexpr bool operator==(const CodewordRules &) const noexcept = default;
-
-//    /// Creates a rule set from string input in the form "p4c6r" or
-//    /// "p4c10n".  Throws `std::invalid_argument` if the input string
-//    /// is malformed or if the rules are invalid.
-//    static Rules from_str(const std::string &s)
-//    {
-//        std::regex re("p([0-9])c([0-9][0-9]?)([nr])", std::regex::icase);
-//        std::smatch m;
-//        if (!std::regex_match(s, m, re))
-//            throw std::invalid_argument("malformed rules string");
-//
-//        int num_pegs = std::stoi(m[1].str());
-//        int num_colors = std::stoi(m[2].str());
-//        bool repeatable = (m[3].str() == "r") || (m[3].str() == "R");
-//        return Rules(num_pegs, num_colors, repeatable);
-//    }
 
     /// Writes codeword attributes to an output stream in the form
     /// "6x4" or "6x4h".
@@ -325,21 +303,6 @@ public:
     {
         return Feedback(rules.codeword_size(), 0);
     }
-
-//    /// Creates a feedback from an input string in the form "1A2B".
-//    /// Throws std::invalid_argument if the string is malformed, or
-//    /// if the resulting feedback is formally invalid.
-//    static Feedback from_str(const std::string &s)
-//    {
-//        std::regex re("([0-9])A([0-9])B", std::regex::icase);
-//        std::smatch m;
-//        if (!std::regex_match(s, m, re))
-//            throw std::invalid_argument("malformed feedback string");
-//
-//        int a = std::stoi(m[1].str());
-//        int b = std::stoi(m[2].str());
-//        return Feedback(a, b);
-//    }
 
     /// Writes a feedback to an output stream in the form "1A2B".
     template <class CharT, class Traits>
@@ -587,121 +550,6 @@ private:
         cyclic_mask<mask_type>(MAX_CODEWORD_SIZE, MAX_ALPHABET_SIZE);
 };
 
-/// Returns a vector v with (m + 1) elements (m := codeword length), where
-/// v[j] := the size of the sub-population where the first j letters in the
-/// codeword are fixed.
-template <size_t M>
-constexpr std::array<size_t, M + 1>
-sub_population_sizes(const CodewordRules &rules) noexcept
-{
-    std::array<size_t, M + 1> sizes {};
-    size_t count = 1;
-    const size_t n = rules.alphabet_size();
-    const size_t m = rules.codeword_size();
-    for (Position j = m; j > 0; --j)
-    {
-        sizes[j] = count;
-        if (rules.is_heterogram())
-            count *= (n - j + 1);
-        else
-            count *= n;
-    }
-    sizes[0] = count;
-    return sizes;
-}
-
-/// Represents the collection of all codewords conforming to a given rule set.
-class CodewordPopulation
-{
-public:
-    /// Creates the population from the given rules.
-    constexpr CodewordPopulation(const CodewordRules &rules) noexcept
-      : _rules(rules),
-        _sub_population_sizes(sub_population_sizes<MAX_CODEWORD_SIZE>(rules))
-    {
-    }
-
-    /// Returns the rules that the population of codewords conform to.
-    constexpr const CodewordRules &rules() const noexcept { return _rules; }
-
-    /// Returns the number of (distinct) codewords in the population.
-    /// (Note: The empty codeword is the unique codeword of length zero.)
-    constexpr size_t size() const noexcept { return _sub_population_sizes[0]; }
-
-    /// Returns the codeword at the given index in the population in
-    /// lexicographical order.
-    constexpr Codeword get(size_t index) const noexcept
-    {
-        assert(index >= 0 && index < size());
-        const size_t n = _rules.alphabet_size();
-        const size_t m = _rules.codeword_size();
-
-        std::array<Letter, MAX_CODEWORD_SIZE> letters {};
-        if (_rules.is_heterogram())
-        {
-            std::array<Letter, MAX_ALPHABET_SIZE> alphabet {};
-            std::iota(alphabet.begin(), alphabet.end(), Letter(0));
-            for (Position j = 0; j < m; j++)
-            {
-                size_t i = index / _sub_population_sizes[j + 1];
-                letters[j] = alphabet[i];
-                std::copy(alphabet.cbegin() + i + 1,
-                          alphabet.cbegin() + n - j,
-                          alphabet.begin() + i);
-                index %= _sub_population_sizes[j + 1];
-            }
-        }
-        else
-        {
-            for (Position j = 0; j < m; j++)
-            {
-                size_t i = index / _sub_population_sizes[j + 1];
-                letters[j] = static_cast<Letter>(i);
-                index %= _sub_population_sizes[j + 1];
-            }
-        }
-        return Codeword(letters.data(), letters.data() + m);
-    }
-
-    class Iterator
-    {
-    public:
-        // TODO: std::random_access_iterator_tag crashes the process
-        using iterator_category = std::forward_iterator_tag;
-        using value_type = Codeword;
-        using difference_type = std::ptrdiff_t;
-        using pointer = const Codeword *;
-        using reference = Codeword;
-
-        constexpr Iterator(const CodewordPopulation &owner, size_t index) noexcept
-          : _owner(&owner), _index(index) { }
-
-        constexpr reference operator *() const noexcept
-        { return _owner->get(_index); }
-
-        constexpr Iterator& operator ++() noexcept { ++_index; return *this; }
-
-        constexpr auto operator <=>(const Iterator &) const noexcept = default;
-
-    private:
-        const CodewordPopulation *_owner;
-        difference_type _index;
-    };
-
-    Iterator begin() const noexcept { return Iterator(*this, 0); }
-
-    Iterator end() const noexcept { return Iterator(*this, size()); }
-
-private:
-    /// Rule set that all codewords in the population conform to.
-    CodewordRules _rules;
-
-    /// Vector with (m + 1) elements (m := codeword length), where element j
-    /// denotes the size of the sub-population where the first j letters of
-    /// a codeword are fixed.
-    std::array<size_t, MAX_CODEWORD_SIZE + 1> _sub_population_sizes;
-};
-
 struct Constraint
 {
     Codeword guess;    // challenge
@@ -742,6 +590,51 @@ struct Constraint
         c = Constraint{guess, feedback};
         return is;
     }
+};
+
+/// Represents a set of codewords that conform to the given rules and that
+/// satisfy the given constraints.
+class CodewordSet
+{
+public:
+    /// Copy constructor and copy assignment.
+    explicit CodewordSet(const CodewordSet &other) = default;
+    CodewordSet & operator=(const CodewordSet &other) = default;
+
+    /// Move constructor and move assignment.
+    explicit CodewordSet(CodewordSet &&other) = default;
+    CodewordSet & operator=(CodewordSet &&other) = default;
+
+    /// Creates a set of all codewords conforming to the given rules.
+    explicit CodewordSet(const CodewordRules &rules);
+
+    /// Creates a subset of a base set by filtering by a constraint.
+    CodewordSet(const CodewordSet &base, const Constraint &constraint);
+
+    /// Returns the number of codewords in the set.
+    constexpr size_t size() const noexcept { return _list.size(); }
+
+    /// Returns the codeword at the given index.
+    constexpr Codeword operator[](size_t index) const noexcept
+    {
+        return _list[index];
+    }
+
+    /// Returns an iterator to the first codeword in the set.
+    std::vector<Codeword>::const_iterator begin() const noexcept
+    {
+        return _list.begin();
+    }
+
+    /// Returns an iterator past the last codeword in the set.
+    std::vector<Codeword>::const_iterator end() const noexcept
+    {
+        return _list.end();
+    }
+
+private:
+    /// List of codewords.
+    std::vector<Codeword> _list;
 };
 
 } // namespace mastermind

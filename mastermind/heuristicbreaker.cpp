@@ -42,7 +42,7 @@ public:
     HeuristicCodeBreaker(const CodewordRules &rules)
       : _partition_count(Feedback::perfect_match(rules).ordinal() + 1)
     {
-        CodewordPopulation population(rules);
+        CodewordSet population(rules);
         _population.assign(population.begin(), population.end());
         _admissible = std::span(_population);
     }

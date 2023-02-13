@@ -10,7 +10,7 @@ class SimpleCodeBreaker : public CodeBreaker
 public:
     SimpleCodeBreaker(const CodewordRules &rules)
     {
-        CodewordPopulation population(rules);
+        CodewordSet population(rules);
         _potential_secrets.assign(population.begin(), population.end());
     }
 

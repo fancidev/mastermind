@@ -1,6 +1,7 @@
 #include "codemaker.hpp"
 #include <cassert>
 #include <random>
+#include <vector>
 
 namespace mastermind {
 
@@ -36,9 +37,39 @@ static size_t get_random_index(size_t count)
 /// Creates a standard code maker.
 Codeword sample(const CodewordRules &rules)
 {
-    CodewordPopulation population(rules);
-    size_t index = get_random_index(population.size());
-    return population.get(index);
+    CodewordSet population(rules);
+    return population[get_random_index(population.size())];
 }
+
+//class DynamicCodemaker : public Codemaker
+//{
+//public:
+//    DynamicCodemaker(const CodewordRules &rules)
+//      : _rules(rules)
+//    {
+//        CodewordPopulation p(rules);
+//        _secrets.assign(p.begin(), p.end());
+//    }
+//
+//    virtual Feedback respond(const Codeword &guess) override
+//    {
+//        assert(guess.conforms_to(_rules));
+//
+//        // Partition
+//        std::vector<Feedback> feedbacks;
+//        feedbacks.reserve(_secrets.size());
+//        for (Codeword secret : _secrets)
+//            feedbacks.push_back(compare(secret, guess));
+//
+//        // partition it
+//
+//
+//        return compare(_secret, guess);
+//    }
+//
+//private:
+//    CodewordRules _rules;
+//    std::vector<Codeword> _secrets;
+//};
 
 }
