@@ -185,163 +185,6 @@ generate_outcomes() noexcept
     return outcomes;
 }
 
-/**
- * Represents the feedback from comparing two codewords.
- *
- * Given codewords x = (x[1], ..., x[M]) and y = (y[1], ..., y[M]) drawn
- * from alphabet A = (A[1], ..., A[N]), feedback is represented by the pair
- * (a, b), where
- *
- *   a := #{ j | 1 <= j <= M, x[j] == y[j] }
- *   b := sum_{i=1}^N min(#{ j | x[j] == A[i] }, #{ j | y[j] == A[i] }) - a
- *
- * In words, `a` represents the number matching letters in matching positions,
- * and `b` represents the number of matching colors in different positions.
- *
- * Note that x and y are commutative.
- *
- * Not all feedback pairs are valid for a given set of rules.  For example:
- *
- *   - (5, 0) is invalid in a game with 10 letters over 4 positions;
- *   - (3, 1) is invalid in a game with 10 letters over 4 positions;
- *   - (2, 0) is invalid in a game with 5 letters over 4 positions where
- *     each letter appears at most once.
- *
- * In addition, as constraints are added to the game, the set of valid
- * feedbacks gets smaller.
- *
- * Therefore, this class does not check for the validity of the feedback.
- *
- * To improve memory locality, the set of all feedbacks are arranged
- * in a triangle, such that `a` and `b` along each diagonal sum to the
- * same value, like below:
- *
- *   0,0  0,1  0,2  0,3  0,4
- *   1,0  1,1  1,2  1,3
- *   2,0  2,1  2,2
- *   3,0  3,1
- *   4,0
- *
- * The feedbacks are then mapped to ordinals in increasing (a+b) followed
- * by increasing (a) order, like below:
- *
- *   0,0 -> 0,1 -> 1,0 -> 0,2 -> 1,1 -> 2,0 -> ...
- *
- * To convert a feedback (a, b) to its ordinal position, use the formula
- *
- *   (a+b)*(a+b+1)/2+a
- *
- * The largest feedback ordinal for a rule set M positions is
- *
- *   M*(M+1)/2+M
- *
- * and the number of (different) feedbacks is
- *
- *   M*(M+1)/2+M+1 = (M+1)*(M+2)/2
- *
- * Therefore 8-bit storage is able to represent any feedback up to
- * M = 21 (corresponding to maximum ordinal value 252).  This is
- * sufficient for our use.
- *
- * There is no simple formula to convert feedback ordinal to (a, b).
- * We build a lookup table for that purpose.
- */
-class Feedback
-{
-public:
-    /// Type of feedback ordinal.
-    typedef uint8_t ordinal_type;
-
-    /// Maximum number of formally valid distinct feedbacks.
-    static constexpr size_t MaxOutcomes =
-        (MAX_CODEWORD_SIZE + 1) * (MAX_CODEWORD_SIZE + 2) / 2;
-
-    static_assert(MaxOutcomes - 1 <= std::numeric_limits<ordinal_type>::max(),
-                  "ordinal_type is not large enough for MAX_CODEWORD_LENGTH");
-
-    /// Creates the feedback "0A0B".
-    constexpr Feedback() noexcept : _ordinal(0) {}
-
-    /// Creates a feedback from its ordinal.
-    constexpr explicit Feedback(ordinal_type ordinal) noexcept
-      : _ordinal(ordinal) {}
-
-    /// Creates a feedback with the given a and b.
-    /// Throws std::invalid_argument if any argument is out of the supported
-    /// range.
-    constexpr Feedback(size_t a, size_t b)
-    {
-        if (!(a <= MAX_CODEWORD_SIZE))
-            throw std::invalid_argument("a must be between 0 and "
-                                        STRINGIFY(MAX_CODEWORD_SIZE));
-        if (!(b <= MAX_CODEWORD_SIZE))
-            throw std::invalid_argument("b must be between 0 and "
-                                        STRINGIFY(MAX_CODEWORD_SIZE));
-        size_t ab = a + b;
-        if (!(ab <= MAX_CODEWORD_SIZE))
-            throw std::invalid_argument("(a + b) must be between 0 and "
-                                        STRINGIFY(MAX_CODEWORD_SIZE));
-
-        _ordinal = static_cast<ordinal_type>((ab+1)*ab/2+a);
-    }
-
-    /// Returns the ordinal of the feedback.
-    constexpr ordinal_type ordinal() const noexcept { return _ordinal; }
-
-    /// Returns the number of matching letters in matching positions.
-    constexpr size_t a() const noexcept { return _outcomes[_ordinal].first; }
-
-    /// Returns the number of matching letters in unmatched positions.
-    constexpr size_t b() const noexcept { return _outcomes[_ordinal].second; }
-
-    /// Default comparison operators by member comparison.
-    constexpr auto operator <=>(const Feedback &other) const noexcept = default;
-
-    /// Returns the feedback corresponding to a perfect match for a
-    /// given rule set.
-    static constexpr Feedback perfect_match(const CodewordRules &rules) noexcept
-    {
-        return Feedback(rules.codeword_size(), 0);
-    }
-
-    /// Writes a feedback to an output stream in the form "1A2B".
-    template <class CharT, class Traits>
-    friend std::basic_ostream<CharT, Traits> &
-    operator <<(std::basic_ostream<CharT, Traits> &os, const Feedback &feedback)
-    {
-        return os << feedback.a() << 'A' << feedback.b() << 'B';
-    }
-
-    /// Reads a feedback from an input stream in the form "1A2B".
-    template <class CharT, class Traits>
-    friend std::basic_istream<CharT, Traits> &
-    operator >>(std::basic_istream<CharT, Traits> &is, Feedback &feedback)
-    {
-        size_t a, b;
-        CharT A, B;
-        if (!(is >> a >> A >> b >> B))
-            return is;
-        if (!(a <= MAX_CODEWORD_SIZE
-              && b <= MAX_CODEWORD_SIZE
-              && a + b <= MAX_CODEWORD_SIZE
-              && (A == CharT('A') || A == CharT('a'))
-              && (B == CharT('B') || B == CharT('b'))))
-        {
-            is.setstate(is.failbit);
-            return is;
-        }
-        feedback = Feedback(a, b);
-        return is;
-    }
-
-private:
-    /// Ordinal of the feedback.
-    ordinal_type _ordinal;
-
-    static constexpr std::array<std::pair<size_t, size_t>, MaxOutcomes>
-        _outcomes = generate_outcomes<MAX_CODEWORD_SIZE>();
-};
-
 /// Returns a bit pattern of type T
 template <class T>
 constexpr T cyclic_mask(size_t bits_in_group, size_t num_groups)
@@ -354,6 +197,8 @@ constexpr T cyclic_mask(size_t bits_in_group, size_t num_groups)
     }
     return mask;
 }
+
+class Correlation;
 
 /// Represents a codeword (such as 2587).
 class Codeword
@@ -468,15 +313,7 @@ public:
         return LetterIterator(0);
     }
 
-    /// Compares this codeword to another and returns the feedback.
-    friend constexpr Feedback
-    compare(const Codeword &x, const Codeword &y) noexcept
-    {
-        int ab = std::popcount(x._alphabet_mask & y._alphabet_mask);
-        int a = std::popcount(x._position_mask & y._position_mask);
-        int ordinal = (ab+1)*ab/2+a;
-        return Feedback(static_cast<Feedback::ordinal_type>(ordinal));
-    }
+    friend class Correlation;
 
     /// Writes a codeword to an output stream in the form "1224".
     template <class CharT, class Traits>
@@ -550,6 +387,182 @@ private:
         cyclic_mask<mask_type>(MAX_CODEWORD_SIZE, MAX_ALPHABET_SIZE);
 };
 
+/**
+ * Represents the correlation between two codewords.
+ *
+ * Let x = {(x[1],p[1]) .. (x[r],p[r])}, y = {(y[1],q[1]) .. (y[s],q[s])}
+ * be two codewords, where {p[1] .. p[r]} = {1..r}, {q[1] .. q[s]} = {1..s},
+ * and x[1] .. x[r], y[1] .. y[s] in {1..N} (the alphabet).
+ *
+ * The *correlation* between x and y is represented by the pair (a, b),
+ * where
+ *
+ *   `a := #{ j | 1 <= j <= min(r,s), x[j] == y[j], p[j] == q[j] }`
+ *   `b := sum_{i=1}^N min(#{ j | x[j] == A[i] }, #{ j | y[j] == A[i] }) - a`
+ *
+ * In words, `a` represents the number of matching letters in matching
+ * positions, and `b` represents the number of matching letters in unmatched
+ * positions.
+ *
+ * Note that x and y are commutative in computing the correlation.
+ *
+ * Not all correlation values are achievable for a given set of rules.
+ * For example:
+ *
+ *   - (5, 0) is not achievable for 10 letters in 4 positions;
+ *   - (3, 1) is not achievable for 10 letters in 4 positions;
+ *   - (2, 0) is not achievable for 5 letters in 4 positions where
+ *     each letter appears at most once.
+ *
+ * In addition, as constraints are added, the set of achievable correlation
+ * values gets smaller.
+ *
+ * Therefore, this class does not check the achievability of correlation
+ * values.
+ *
+ * To improve memory locality, all correlation values (pairs) are arranged
+ * in a triangle, such that `a` and `b` along each diagonal sum to the
+ * same value, like below:
+ *
+ *   0,0  0,1  0,2  0,3  0,4
+ *   1,0  1,1  1,2  1,3
+ *   2,0  2,1  2,2
+ *   3,0  3,1
+ *   4,0
+ *
+ * A correlation pair is mapped to an ordinal in increasing (a+b) followed
+ * by increasing (a) order, like below:
+ *
+ *   0,0 -> 0,1 -> 1,0 -> 0,2 -> 1,1 -> 2,0 -> ...
+ *
+ * Conceptually, a higher ordinal corresponds to "higher correlation".
+ *
+ * To convert a correlation pair (a, b) to its ordinal, use the formula
+ *
+ *   `(a+b)*(a+b+1)/2+a`
+ *
+ * The largest ordinal for codewords with up to M positions is
+ *
+ *   `M*(M+1)/2+M`
+ *
+ * and the number of (different) correlation values is
+ *
+ *   `M*(M+1)/2+M+1 = (M+1)*(M+2)/2`
+ *
+ * Therefore 8-bit storage is able to represent any correlation value
+ * up to M = 21 (corresponding to maximum ordinal value 252).  This is
+ * sufficient for our use.
+ *
+ * There is no simple formula to convert ordinal back to (a, b).
+ * We build a lookup table for this purpose.
+ */
+class Correlation
+{
+public:
+    /// Type of correlation ordinal.
+    typedef uint8_t ordinal_type;
+
+    /// Maximum number of formally valid distinct correlations.
+    static constexpr size_t MaxOutcomes =
+        (MAX_CODEWORD_SIZE + 1) * (MAX_CODEWORD_SIZE + 2) / 2;
+
+    static_assert(MaxOutcomes - 1 <= std::numeric_limits<ordinal_type>::max(),
+                  "ordinal_type is not large enough for MAX_CODEWORD_LENGTH");
+
+    /// Creates the correlation "0A0B".
+    constexpr Correlation() noexcept : _ordinal(0) {}
+
+    /// Creates a correlation from its ordinal.
+    constexpr explicit Correlation(ordinal_type ordinal) noexcept
+      : _ordinal(ordinal) {}
+
+    /// Creates a feedback with the given a and b.
+    /// Throws std::invalid_argument if any argument is out of the supported
+    /// range.
+    constexpr Correlation(size_t a, size_t b)
+    {
+        if (!(a <= MAX_CODEWORD_SIZE))
+            throw std::invalid_argument("a must be between 0 and "
+                                        STRINGIFY(MAX_CODEWORD_SIZE));
+        if (!(b <= MAX_CODEWORD_SIZE))
+            throw std::invalid_argument("b must be between 0 and "
+                                        STRINGIFY(MAX_CODEWORD_SIZE));
+        size_t ab = a + b;
+        if (!(ab <= MAX_CODEWORD_SIZE))
+            throw std::invalid_argument("(a + b) must be between 0 and "
+                                        STRINGIFY(MAX_CODEWORD_SIZE));
+
+        _ordinal = static_cast<ordinal_type>((ab+1)*ab/2+a);
+    }
+
+    /// Computes the correlation of two codewords.
+    constexpr Correlation(const Codeword &x, const Codeword &y) noexcept
+    {
+        int ab = std::popcount(x._alphabet_mask & y._alphabet_mask);
+        int a = std::popcount(x._position_mask & y._position_mask);
+        int ordinal = (ab+1)*ab/2+a;
+        _ordinal = static_cast<ordinal_type>(ordinal);
+    }
+
+    /// Returns the ordinal of the feedback.
+    constexpr ordinal_type ordinal() const noexcept { return _ordinal; }
+
+    /// Returns the number of matching letters in matching positions.
+    constexpr size_t a() const noexcept { return _outcomes[_ordinal].first; }
+
+    /// Returns the number of matching letters in unmatched positions.
+    constexpr size_t b() const noexcept { return _outcomes[_ordinal].second; }
+
+    /// Default comparison operators by member comparison.
+    constexpr auto operator <=>(const Correlation &) const noexcept = default;
+
+    /// Returns the feedback corresponding to a perfect match for a
+    /// given rule set.
+    static constexpr Correlation perfect_match(const CodewordRules &rules) noexcept
+    {
+        return Correlation(rules.codeword_size(), 0);
+    }
+
+    /// Writes a correlation pair to an output stream in the form "1A2B".
+    template <class CharT, class Traits>
+    friend std::basic_ostream<CharT, Traits> &
+    operator <<(std::basic_ostream<CharT, Traits> &os, const Correlation &corr)
+    {
+        return os << corr.a() << 'A' << corr.b() << 'B';
+    }
+
+    /// Reads a correlation pair from an input stream in the form "1A2B".
+    template <class CharT, class Traits>
+    friend std::basic_istream<CharT, Traits> &
+    operator >>(std::basic_istream<CharT, Traits> &is, Correlation &corr)
+    {
+        size_t a, b;
+        CharT A, B;
+        if (!(is >> a >> A >> b >> B))
+            return is;
+        if (!(a <= MAX_CODEWORD_SIZE
+              && b <= MAX_CODEWORD_SIZE
+              && a + b <= MAX_CODEWORD_SIZE
+              && (A == CharT('A') || A == CharT('a'))
+              && (B == CharT('B') || B == CharT('b'))))
+        {
+            is.setstate(is.failbit);
+            return is;
+        }
+        corr = Correlation(a, b);
+        return is;
+    }
+
+private:
+    /// Ordinal of the feedback.
+    ordinal_type _ordinal;
+
+    static constexpr std::array<std::pair<size_t, size_t>, MaxOutcomes>
+        _outcomes = generate_outcomes<MAX_CODEWORD_SIZE>();
+};
+
+using Feedback = Correlation;
+
 struct Constraint
 {
     Codeword guess;    // challenge
@@ -557,7 +570,7 @@ struct Constraint
 
     constexpr bool operator()(const Codeword &secret) const noexcept
     {
-        return compare(secret, guess) == feedback;
+        return Correlation(secret, guess) == feedback;
     }
 
     /// Writes a constraint to an output stream in the form "1234:1A1B".
@@ -610,6 +623,9 @@ public:
 
     /// Creates a subset of a base set by filtering by a constraint.
     CodewordSet(const CodewordSet &base, const Constraint &constraint);
+
+    /// Returns true if the set is empty.
+    /*constexpr*/ bool empty() const noexcept { return _list.empty(); }
 
     /// Returns the number of codewords in the set.
     /*constexpr*/ size_t size() const noexcept { return _list.size(); }

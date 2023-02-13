@@ -28,18 +28,14 @@ public:
 
     virtual void step(const Codeword &guess, Feedback response) override
     {
-        auto filter = [=](const Codeword &secret)
-        {
-            return compare(guess, secret) == response;
-        };
 #if 0
         auto it = std::partition(_potential_secrets.begin(),
                                  _potential_secrets.end(),
-                                 filter);
+                                 Constraint{guess, response});
 #else
         auto it = std::stable_partition(_potential_secrets.begin(),
                                         _potential_secrets.end(),
-                                        filter);
+                                        Constraint{guess, response});
 #endif
         _potential_secrets.resize(it - _potential_secrets.begin());
     }

@@ -13,7 +13,7 @@ public:
 
     virtual Feedback respond(const Codeword &guess) override
     {
-        return compare(_secret, guess);
+        return Correlation(_secret, guess);
     }
 
 private:

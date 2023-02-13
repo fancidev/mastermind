@@ -68,7 +68,7 @@ public:
             std::array<size_t, Feedback::MaxOutcomes> freq{};
             for (Codeword secret : _admissible)
             {
-                Feedback feedback = compare(guess, secret);
+                Feedback feedback(guess, secret);
                 ++freq[feedback.ordinal()];
             }
 
@@ -85,18 +85,14 @@ public:
 
     virtual void step(const Codeword &guess, Feedback response) override
     {
-        auto filter = [=](const Codeword &secret)
-        {
-            return compare(guess, secret) == response;
-        };
 #if 0
         auto it = std::partition(_admissible.begin(),
                                  _admissible.end(),
-                                 filter);
+                                 Constraint{guess, response});
 #else
         auto it = std::stable_partition(_admissible.begin(),
                                         _admissible.end(),
-                                        filter);
+                                        Constraint{guess, response});
 #endif
         _admissible = _admissible.first(it - _admissible.begin());
     }
