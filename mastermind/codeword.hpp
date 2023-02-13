@@ -612,10 +612,10 @@ public:
     CodewordSet(const CodewordSet &base, const Constraint &constraint);
 
     /// Returns the number of codewords in the set.
-    constexpr size_t size() const noexcept { return _list.size(); }
+    /*constexpr*/ size_t size() const noexcept { return _list.size(); }
 
     /// Returns the codeword at the given index.
-    constexpr Codeword operator[](size_t index) const noexcept
+    /*constexpr*/ Codeword operator[](size_t index) const noexcept
     {
         return _list[index];
     }
