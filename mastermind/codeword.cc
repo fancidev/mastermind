@@ -65,7 +65,7 @@ get_codeword_at(size_t index,
     return Codeword(letters.data(), letters.data() + m);
 }
 
-CodewordSet::CodewordSet(const CodewordRules &rules)
+CodewordSet::CodewordSet(const CodewordRules &rules) : _rules(rules)
 {
     std::array<size_t, MAX_CODEWORD_SIZE + 1> sub_population_sizes(
         get_sub_population_sizes<MAX_CODEWORD_SIZE>(rules));
@@ -77,7 +77,9 @@ CodewordSet::CodewordSet(const CodewordRules &rules)
 }
 
 CodewordSet::CodewordSet(const CodewordSet &base, const Constraint &constraint)
+  : _rules(base._rules), _constraints(base._constraints)
 {
+    _constraints.push_back(constraint);
     std::copy_if(base.begin(),
                  base.end(),
                  std::back_inserter(_list),

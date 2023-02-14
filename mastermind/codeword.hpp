@@ -649,6 +649,10 @@ public:
     }
 
 private:
+    CodewordRules _rules;
+
+    std::vector<Constraint> _constraints;
+
     /// List of codewords.
     std::vector<Codeword> _list;
 };

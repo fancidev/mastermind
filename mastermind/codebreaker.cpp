@@ -8,10 +8,8 @@ namespace mastermind {
 class SimpleCodeBreaker : public CodeBreaker
 {
 public:
-    SimpleCodeBreaker(const CodewordRules &rules)
+    SimpleCodeBreaker(const CodewordRules &rules) : _possible_secrets(rules)
     {
-        CodewordSet population(rules);
-        _potential_secrets.assign(population.begin(), population.end());
     }
 
     virtual const char *name() const override
@@ -21,27 +19,18 @@ public:
 
     virtual Codeword make_guess() override
     {
-        if (_potential_secrets.empty())
-            throw std::runtime_error("no potential secret");
-        return _potential_secrets[0];
+        if (_possible_secrets.empty())
+            throw std::runtime_error("no possible secret");
+        return _possible_secrets[0];
     }
 
-    virtual void step(const Codeword &guess, Feedback response) override
+    virtual void step(const Constraint &constraint) override
     {
-#if 0
-        auto it = std::partition(_potential_secrets.begin(),
-                                 _potential_secrets.end(),
-                                 Constraint{guess, response});
-#else
-        auto it = std::stable_partition(_potential_secrets.begin(),
-                                        _potential_secrets.end(),
-                                        Constraint{guess, response});
-#endif
-        _potential_secrets.resize(it - _potential_secrets.begin());
+        _possible_secrets = CodewordSet(_possible_secrets, constraint);
     }
 
 private:
-    std::vector<Codeword> _potential_secrets;
+    CodewordSet _possible_secrets;
 };
 
 std::unique_ptr<CodeBreaker>

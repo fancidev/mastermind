@@ -92,7 +92,7 @@ void self_play(const mastermind::CodewordRules &rules)
         std::cout << guess << "  " << response << std::endl;
         if (response == Feedback::perfect_match(rules))
             break;
-        breaker->step(guess, response);
+        breaker->step(Constraint{guess, response});
     }
 }
 
@@ -114,7 +114,7 @@ void test_breaker(const mastermind::CodewordRules &rules,
             Feedback response = maker->respond(guess);
             if (response == Feedback::perfect_match(rules))
                 break;
-            breaker->step(guess, response);
+            breaker->step({guess, response});
         }
         total_steps += round;
         worst_steps = std::max(worst_steps, round);
@@ -314,7 +314,7 @@ int main(int argc, const char **argv)
             std::cout << Constraint{guess, feedback} << std::endl;
             if (feedback == Feedback::perfect_match(rules))
                 break;
-            codebreaker->step(guess, feedback);
+            codebreaker->step(Constraint{guess, feedback});
         }
     }
     else

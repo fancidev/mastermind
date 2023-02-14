@@ -21,7 +21,7 @@ public:
     /// Throws `std::runtime_error` if there are no admissible secrets.
     virtual Codeword make_guess() = 0;
 
-    /// Advances the state of the game with the response for a given guess.
+    /// Advances the state of the game with the given constraint.
     ///
     /// The guess is not necessarily the one returned by a prior call
     /// to `make_guess`, and `make_guess` is not required to have been
@@ -30,7 +30,7 @@ public:
     ///
     /// The behavior is undefined if the (guess, response) pair is
     /// inconsistent, i.e. if it leads to no admissible secrets.
-    virtual void step(const Codeword &guess, Feedback response) = 0;
+    virtual void step(const Constraint &constraint) = 0;
 
 protected:
     CodeBreaker() = default;

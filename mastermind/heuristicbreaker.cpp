@@ -83,16 +83,16 @@ public:
         return chosen_guess;
     }
 
-    virtual void step(const Codeword &guess, Feedback response) override
+    virtual void step(const Constraint &constraint) override
     {
 #if 0
         auto it = std::partition(_admissible.begin(),
                                  _admissible.end(),
-                                 Constraint{guess, response});
+                                 constraint);
 #else
         auto it = std::stable_partition(_admissible.begin(),
                                         _admissible.end(),
-                                        Constraint{guess, response});
+                                        constraint);
 #endif
         _admissible = _admissible.first(it - _admissible.begin());
     }
