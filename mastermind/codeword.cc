@@ -74,6 +74,15 @@ CodewordSet::CodewordSet(const CodewordRules &rules) : _rules(rules)
     _list.reserve(n);
     for (size_t index = 0; index < n; ++index)
         _list.push_back(get_codeword_at<MAX_CODEWORD_SIZE>(index, rules, sub_population_sizes));
+
+    const size_t m = rules.codeword_size();
+    CodewordMorphism2::PositionMap position_map(m);
+    CodewordMorphism2::LetterMap letter_map;
+    do
+    {
+        _morphisms.push_back({position_map, letter_map});
+    }
+    while (std::next_permutation(position_map.begin(), position_map.begin() + m));
 }
 
 void CodewordSet::push_constraint(const Constraint &constraint)
@@ -89,13 +98,9 @@ void CodewordSet::push_constraint(const Constraint &constraint)
     const size_t num_used = _used.count();
 
     // Update the canonical mappings.
-    using LetterSequence = std::array<Letter, MAX_CODEWORD_SIZE>;
-    LetterSequence _letters;
-    auto it2 = std::copy(constraint.guess.begin(), constraint.guess.end(), _letters.begin());
-    const std::span<const Letter> letters(_letters.begin(), it2);
-
-    const size_t m = _rules.codeword_size();
+    LetterSequence letters(constraint.guess);
     LetterSequence canonical;
+    const size_t m = _rules.codeword_size();
     size_t out = 0;
     for (size_t in = 0; in < _morphisms.size(); in++)
     {
@@ -123,21 +128,19 @@ void CodewordSet::push_constraint(const Constraint &constraint)
             canonical = permuted;
             _morphisms[out++] = morph;
         }
-        else if (std::lexicographical_compare(
-                 permuted.begin(), permuted.begin() + m,
-                 canonical.begin(), canonical.begin() + m))
-        {
-            out = 0;
-            _morphisms[out++] = morph;
-            canonical = permuted;
-        }
-        else if (std::lexicographical_compare(
-                 canonical.begin(), canonical.begin() + m,
-                 permuted.begin(), permuted.begin() + m))
-            ;
         else
         {
-            _morphisms[out++] = morph;
+            auto cmp = (permuted <=> canonical);
+            if (cmp < 0)
+            {
+                out = 0;
+                _morphisms[out++] = morph;
+                canonical = permuted;
+            }
+            else if (cmp == 0)
+            {
+                _morphisms[out++] = morph;
+            }
         }
     }
     assert(out > 0);

@@ -388,6 +388,47 @@ private:
         cyclic_mask<mask_type>(MAX_CODEWORD_SIZE, MAX_ALPHABET_SIZE);
 };
 
+/// Represents a sequence of no more than `MAX_CODEWORD_SIZE` letters.
+class LetterSequence
+{
+public:
+    constexpr LetterSequence() noexcept = default;
+
+    explicit constexpr LetterSequence(const Codeword &codeword) noexcept
+    {
+        auto it = std::copy(codeword.begin(), codeword.end(), _letters.begin());
+        _size = it - _letters.begin();
+    }
+
+    using iterator = std::array<Letter, MAX_CODEWORD_SIZE>::iterator;
+    constexpr iterator begin() noexcept { return _letters.begin(); }
+    constexpr iterator end() noexcept { return _letters.begin() + _size; }
+
+    using const_iterator = std::array<Letter, MAX_CODEWORD_SIZE>::const_iterator;
+    constexpr const_iterator begin() const noexcept { return _letters.begin(); }
+    constexpr const_iterator end() const noexcept { return _letters.begin() + _size; }
+
+    constexpr Letter operator[](size_t j) const noexcept { return _letters[j]; }
+    constexpr Letter &operator[](size_t j) noexcept { return _letters[j]; }
+
+    constexpr std::strong_ordering operator<=>(const LetterSequence &other) const noexcept
+    {
+        assert(_size == other._size);
+        for (size_t j = 0; j < _size; j++)
+        {
+            if (_letters[j] < other._letters[j])
+                return std::strong_ordering::less;
+            if (_letters[j] > other._letters[j])
+                return std::strong_ordering::greater;
+        }
+        return std::strong_ordering::equal;
+    }
+
+private:
+    std::array<Letter, MAX_CODEWORD_SIZE> _letters;
+    std::size_t _size = 0;
+};
+
 /**
  * Represents the correlation between two codewords.
  *
@@ -629,6 +670,14 @@ public:
         std::fill(base::begin(), base::end(), not_mapped);
     }
 
+    /// Creates an identity mapping of the first `n` indices.
+    explicit constexpr Bijection(size_t n) noexcept : Bijection()
+    {
+        assert(n <= N);
+        using base = std::array<Index, N>;
+        std::iota(base::begin(), base::begin() + n, Index(0));
+    }
+
     /// Returns the inverse mapping.
     constexpr Bijection inverse() const noexcept
     {
@@ -641,36 +690,6 @@ public:
         }
         return inv;
     }
-
-    /// Returns an identity mapping of the first `n` indices.
-    static constexpr Bijection identity(size_t n) noexcept
-    {
-        assert(n <= N);
-        Bijection map;
-        std::iota(map.begin(), map.begin() + n, Index(0));
-        return map;
-    }
-
-    /// Returns `true` if this is the identity permutation.
-//    constexpr bool is_identity() const noexcept
-//    {
-//        return *this == Permutation();
-//    }
-
-//    /// Returns `true` if this object indeed represents a permutation
-//    /// of the indices {0, ..., N-1}.
-//    constexpr bool is_valid() const noexcept
-//    {
-//        std::array<bool, N> exists = {false};
-//        for (size_t i = 0; i < N; i++)
-//        {
-//            size_t ii = static_cast<size_t>((*this)[i]);
-//            if (ii >= N || exists[ii])
-//                return false;
-//            exists[ii] = true;
-//        }
-//        return true;
-//    }
 };
 
 /// Represents a bijection from a subset of codewords to another subset of
