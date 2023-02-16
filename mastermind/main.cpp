@@ -279,7 +279,7 @@ int main(int argc, const char **argv)
     {
         if (!constraint.guess.conforms_to(rules))
             return usage("invalid constraint");
-        secrets = CodewordSet(secrets, constraint);
+        secrets.push_constraint(constraint);
     }
 
     if (action == "count"sv)

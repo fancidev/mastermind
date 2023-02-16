@@ -26,7 +26,7 @@ public:
 
     virtual void step(const Constraint &constraint) override
     {
-        _possible_secrets = CodewordSet(_possible_secrets, constraint);
+        _possible_secrets.push_constraint(constraint);
     }
 
 private:

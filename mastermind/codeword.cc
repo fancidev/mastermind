@@ -76,14 +76,75 @@ CodewordSet::CodewordSet(const CodewordRules &rules) : _rules(rules)
         _list.push_back(get_codeword_at<MAX_CODEWORD_SIZE>(index, rules, sub_population_sizes));
 }
 
-CodewordSet::CodewordSet(const CodewordSet &base, const Constraint &constraint)
-  : _rules(base._rules), _constraints(base._constraints)
+void CodewordSet::push_constraint(const Constraint &constraint)
 {
     _constraints.push_back(constraint);
-    std::copy_if(base.begin(),
-                 base.end(),
-                 std::back_inserter(_list),
-                 constraint);
+
+    auto it = std::copy_if(_list.begin(),
+                           _list.end(),
+                           _list.begin(),
+                           constraint);
+    _list.resize(it - _list.begin());
+
+    const size_t num_used = _used.count();
+
+    // Update the canonical mappings.
+    using LetterSequence = std::array<Letter, MAX_CODEWORD_SIZE>;
+    LetterSequence _letters;
+    auto it2 = std::copy(constraint.guess.begin(), constraint.guess.end(), _letters.begin());
+    const std::span<const Letter> letters(_letters.begin(), it2);
+
+    const size_t m = _rules.codeword_size();
+    LetterSequence canonical;
+    size_t out = 0;
+    for (size_t in = 0; in < _morphisms.size(); in++)
+    {
+        // Make copy of morphism because we may extend its letter map.
+        CodewordMorphism2 morph(_morphisms[in]);
+
+        // Permute positions
+        LetterSequence permuted;
+        for (size_t j = 0; j < m; j++)
+            permuted[morph.position_map[j]] = letters[j];
+
+        // Permute letters
+        Letter next = static_cast<Letter>(num_used);
+        for (size_t j = 0; j < m; j++)
+        {
+            Letter i = permuted[j];
+            Letter ii = morph.letter_map[i];
+            if (ii == CodewordMorphism2::LetterMap::not_mapped)
+                ii = morph.letter_map[i] = next++;
+        }
+
+        // Keep this morphism if the permuted sequence is canonical.
+        if (in == 0)
+        {
+            canonical = permuted;
+            _morphisms[out++] = morph;
+        }
+        else if (std::lexicographical_compare(
+                 permuted.begin(), permuted.begin() + m,
+                 canonical.begin(), canonical.begin() + m))
+        {
+            out = 0;
+            _morphisms[out++] = morph;
+            canonical = permuted;
+        }
+        else if (std::lexicographical_compare(
+                 canonical.begin(), canonical.begin() + m,
+                 permuted.begin(), permuted.begin() + m))
+            ;
+        else
+        {
+            _morphisms[out++] = morph;
+        }
+    }
+    assert(out > 0);
+    _morphisms.resize(out);
+
+    for (size_t j = 0; j < m; j++)
+        _used.set(letters[j]);
 }
 
 } // namespace mastermind

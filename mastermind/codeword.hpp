@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <bit>
+#include <bitset>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -605,8 +606,89 @@ struct Constraint
     }
 };
 
-/// Represents a set of codewords that conform to the given rules and that
-/// satisfy the given constraints.
+// ============================================================================
+// Classes related to codeword set
+// ============================================================================
+
+/// Represents a bijection from a subset of the index set {0, ..., N-1}
+/// of type Index to another subset of that index set.
+template <class Index, size_t N>
+class Bijection : public std::array<Index, N>
+{
+public:
+    static_assert(std::is_integral_v<Index>, "Index must be integral");
+    static_assert(N < static_cast<size_t>(Index(-1)), "no room for placeholder");
+
+    /// A placeholder that indicates an unmapped index.
+    static constexpr Index not_mapped = Index(-1);
+
+    /// Creates an empty mapping.
+    constexpr Bijection() noexcept
+    {
+        using base = std::array<Index, N>;
+        std::fill(base::begin(), base::end(), not_mapped);
+    }
+
+    /// Returns the inverse mapping.
+    constexpr Bijection inverse() const noexcept
+    {
+        Bijection inv;
+        for (size_t i = 0; i < N; i++)
+        {
+            Index ii = (*this)[i];
+            if (ii != not_mapped)
+                inv[ii] = static_cast<Index>(i);
+        }
+        return inv;
+    }
+
+    /// Returns an identity mapping of the first `n` indices.
+    static constexpr Bijection identity(size_t n) noexcept
+    {
+        assert(n <= N);
+        Bijection map;
+        std::iota(map.begin(), map.begin() + n, Index(0));
+        return map;
+    }
+
+    /// Returns `true` if this is the identity permutation.
+//    constexpr bool is_identity() const noexcept
+//    {
+//        return *this == Permutation();
+//    }
+
+//    /// Returns `true` if this object indeed represents a permutation
+//    /// of the indices {0, ..., N-1}.
+//    constexpr bool is_valid() const noexcept
+//    {
+//        std::array<bool, N> exists = {false};
+//        for (size_t i = 0; i < N; i++)
+//        {
+//            size_t ii = static_cast<size_t>((*this)[i]);
+//            if (ii >= N || exists[ii])
+//                return false;
+//            exists[ii] = true;
+//        }
+//        return true;
+//    }
+};
+
+/// Represents a bijection from a subset of codewords to another subset of
+/// codewords.
+struct CodewordMorphism2
+{
+    /// Represents a permutation of positions.
+    using PositionMap = Bijection<Position, MAX_CODEWORD_SIZE>;
+
+    /// Represents a bijection between two subsets of letters.
+    using LetterMap = Bijection<Letter, MAX_ALPHABET_SIZE>;
+
+    PositionMap position_map;
+    LetterMap letter_map;
+};
+
+/// Represents a set of codewords that conform to the given rules and pass
+/// the given constraints.
 class CodewordSet
 {
 public:
@@ -621,8 +703,8 @@ public:
     /// Creates a set of all codewords conforming to the given rules.
     explicit CodewordSet(const CodewordRules &rules);
 
-    /// Creates a subset of a base set by filtering by a constraint.
-    CodewordSet(const CodewordSet &base, const Constraint &constraint);
+    /// Adds a constraint.
+    void push_constraint(const Constraint &constraint);
 
     /// Returns true if the set is empty.
     /*constexpr*/ bool empty() const noexcept { return _list.empty(); }
@@ -649,12 +731,23 @@ public:
     }
 
 private:
+    /// Rules that codewords in the set conform to.
     CodewordRules _rules;
 
+    /// Constraints that codewords in the set passes.
     std::vector<Constraint> _constraints;
 
-    /// List of codewords.
+    /// `_used[i]` is true iff letter i appeared in any of the guesses.
+    std::bitset<MAX_ALPHABET_SIZE> _used;
+
+    /// List of codewords conforming to `_rules` and passing `_constraints`.
     std::vector<Codeword> _list;
+
+    /// List of all codeword morphisms that map the guess sequence of
+    /// `constraints` to a canonical sequence.  Only the `_used` letters
+    /// of the constraints are mapped in the `letter_map` of these
+    /// morphisms.
+    std::vector<CodewordMorphism2> _morphisms;
 };
 
 } // namespace mastermind
