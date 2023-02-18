@@ -98,7 +98,7 @@ void CodewordSet::push_constraint(const Constraint &constraint)
     const size_t num_used = _used.count();
 
     // Update the canonical mappings.
-    LetterSequence letters(constraint.guess);
+    const LetterSequence letters(constraint.guess);
     LetterSequence canonical;
     const size_t m = _rules.codeword_size();
     size_t out = 0;
@@ -108,7 +108,7 @@ void CodewordSet::push_constraint(const Constraint &constraint)
         CodewordMorphism2 morph(_morphisms[in]);
 
         // Permute positions
-        LetterSequence permuted;
+        LetterSequence permuted(letters);
         for (size_t j = 0; j < m; j++)
             permuted[morph.position_map[j]] = letters[j];
 
@@ -120,6 +120,7 @@ void CodewordSet::push_constraint(const Constraint &constraint)
             Letter ii = morph.letter_map[i];
             if (ii == CodewordMorphism2::LetterMap::not_mapped)
                 ii = morph.letter_map[i] = next++;
+            permuted[j] = ii;
         }
 
         // Keep this morphism if the permuted sequence is canonical.

@@ -31,6 +31,7 @@ int usage(const char *error)
         "action:\n"
         "    count       Display number of possible secrets\n"
         "    canonical   Display canonical guesses in lexicographical order\n"
+        "    info        Display summary info about possible secrets\n"
         "    list        Display possible secrets in lexicographical order\n"
         "    make        Accept guesses from stdin and print feedbacks to stdout\n"
         "                until the secret is revealed.\n"
@@ -291,6 +292,27 @@ int main(int argc, const char **argv)
         for (Codeword codeword : secrets)
         {
             std::cout << codeword << std::endl;
+        }
+    }
+    else if (action == "info"sv)
+    {
+        std::cout << "Possible secrets: #" << secrets.size() << std::endl;
+        if (secrets.size() > 0)
+        {
+            std::cout << " [0] " << secrets[0] << std::endl;
+            std::cout << " [" << (secrets.size() - 1) << "] "
+                      << secrets[secrets.size() - 1] << std::endl;
+        }
+        std::cout << "Constraints:" << std::endl;
+        for (size_t i = 0; i < secrets.constraints().size(); i++)
+        {
+            std::cout << " [" << i << "] " << secrets.constraints()[i] << std::endl;
+        }
+        std::cout << "Morphisms:" << std::endl;
+        for (size_t i = 0; i < secrets.morphisms().size(); i++)
+        {
+            const auto &morph = secrets.morphisms()[i];
+            std::cout << " [" << i << "] " << morph.position_map << morph.letter_map << std::endl;
         }
     }
     else if (action == "test"sv)

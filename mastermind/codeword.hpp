@@ -408,8 +408,17 @@ public:
     constexpr const_iterator begin() const noexcept { return _letters.begin(); }
     constexpr const_iterator end() const noexcept { return _letters.begin() + _size; }
 
-    constexpr Letter operator[](size_t j) const noexcept { return _letters[j]; }
-    constexpr Letter &operator[](size_t j) noexcept { return _letters[j]; }
+    constexpr Letter operator[](size_t j) const noexcept
+    {
+        assert(j < _size);
+        return _letters[j];
+    }
+
+    constexpr Letter &operator[](size_t j) noexcept
+    {
+        assert(j < _size);
+        return _letters[j];
+    }
 
     constexpr std::strong_ordering operator<=>(const LetterSequence &other) const noexcept
     {
@@ -690,6 +699,26 @@ public:
         }
         return inv;
     }
+
+    /// Writes the bijection to an output stream in the form "(3*5)".
+    template <class CharT, class Traits>
+    friend std::basic_ostream<CharT, Traits> &
+    operator <<(std::basic_ostream<CharT, Traits> &os, const Bijection &p)
+    {
+        size_t n = N;
+        while (n > 0 && p[n - 1] == not_mapped)
+            n--;
+        os << CharT('(');
+        for (size_t j = 0; j < n; j++)
+        {
+            if (p[j] == not_mapped)
+                os << CharT('*');
+            else
+                os << p[j];
+        }
+        os << CharT(')');
+        return os;
+    }
 };
 
 /// Represents a bijection from a subset of codewords to another subset of
@@ -747,6 +776,16 @@ public:
     std::vector<Codeword>::const_iterator end() const noexcept
     {
         return _list.end();
+    }
+
+    constexpr const std::vector<Constraint> &constraints() const noexcept
+    {
+        return _constraints;
+    }
+
+    constexpr const std::vector<CodewordMorphism2> & morphisms() const noexcept
+    {
+        return _morphisms;
     }
 
 private:
