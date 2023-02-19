@@ -314,6 +314,12 @@ int main(int argc, const char **argv)
             const auto &morph = secrets.morphisms()[i];
             std::cout << " [" << i << "] " << morph.position_map << morph.letter_map << std::endl;
         }
+        std::cout << "Canonical guesses:" << std::endl;
+        std::vector<Codeword> canonical = secrets.get_canonical_guesses();
+        for (size_t i = 0; i < canonical.size(); i++)
+        {
+            std::cout << " [" << i << "] " << canonical[i] << std::endl;
+        }
     }
     else if (action == "test"sv)
     {

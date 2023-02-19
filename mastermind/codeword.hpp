@@ -687,6 +687,30 @@ public:
         std::iota(base::begin(), base::begin() + n, Index(0));
     }
 
+    /// Returns a bijection defined on the full index set {0, ..., N-1}
+    /// by extending the current bijection.
+    constexpr Bijection complete() const noexcept
+    {
+        std::array<bool, N> used {};
+        for (size_t i = 0; i < N; i++)
+        {
+            if ((*this)[i] != not_mapped)
+                used[(*this)[i]] = true;
+        }
+        Bijection completed {*this};
+        Index next{0};
+        for (size_t i = 0; i < N; i++)
+        {
+            if (completed[i] == not_mapped)
+            {
+                while (used[next]) next++;
+                completed[i] = next;
+                used[next++] = true;
+            }
+        }
+        return completed;
+    }
+
     /// Returns the inverse mapping.
     constexpr Bijection inverse() const noexcept
     {
@@ -698,6 +722,24 @@ public:
                 inv[ii] = static_cast<Index>(i);
         }
         return inv;
+    }
+
+    /// Returns the bijection equal to this composed with `other`
+    /// (`other` is applied first).
+    constexpr Bijection composed_with(const Bijection &other) const noexcept
+    {
+        Bijection composed;
+        for (size_t i = 0; i < N; i++)
+        {
+            Index ii = other[i];
+            if (ii != not_mapped)
+            {
+                Index iii = (*this)[ii];
+                assert(iii != not_mapped);
+                composed[i] = iii;
+            }
+        }
+        return composed;
     }
 
     /// Writes the bijection to an output stream in the form "(3*5)".
@@ -733,6 +775,25 @@ struct CodewordMorphism2
 
     PositionMap position_map;
     LetterMap letter_map;
+
+    /// Returns the inverse of this morphism.
+    constexpr CodewordMorphism2 inverse() const noexcept
+    {
+        return CodewordMorphism2 {
+            position_map.inverse(), letter_map.inverse()
+        };
+    }
+
+    /// Returns an morphism equal to this composed with `other` (`other`
+    /// is applied first).
+    constexpr CodewordMorphism2 composed_with(const CodewordMorphism2 &other)
+    const noexcept
+    {
+        return CodewordMorphism2 {
+            position_map.composed_with(other.position_map),
+            letter_map.composed_with(other.letter_map)
+        };
+    }
 };
 
 /// Represents a set of codewords that conform to the given rules and pass
@@ -787,6 +848,8 @@ public:
     {
         return _morphisms;
     }
+
+    std::vector<Codeword> get_canonical_guesses() const;
 
 private:
     /// Rules that codewords in the set conform to.

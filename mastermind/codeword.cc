@@ -1,8 +1,8 @@
 #include "codeword.hpp"
 
 #include <algorithm>
+#include <compare>
 #include <iterator>
-#include <random>
 
 namespace mastermind {
 
@@ -149,6 +149,77 @@ void CodewordSet::push_constraint(const Constraint &constraint)
 
     for (size_t j = 0; j < m; j++)
         _used.set(letters[j]);
+}
+
+std::vector<Codeword> CodewordSet::get_canonical_guesses() const
+{
+    // Build a list of all automorphisms of the canonical sequence.
+    // It is equal to each morphism composed with the inverse of an
+    // arbitrary fixed morphism.
+    assert(_morphisms.size() > 0);
+    CodewordMorphism2 fixed_inverse { _morphisms[0].inverse() };
+    std::vector<CodewordMorphism2> automorphisms;
+    automorphisms.reserve(_morphisms.size());
+    for (const CodewordMorphism2 &morph : _morphisms)
+    {
+        automorphisms.push_back(morph.composed_with(fixed_inverse));
+    }
+
+    // "Complete" the fixed inverse morphism to map canonical guesses
+    // back into original space later.
+    fixed_inverse.letter_map = fixed_inverse.letter_map.complete();
+
+    // Check each codeword in the population.  A codeword is canonical
+    // if it is mapped to itself or a lexicographically larger codeword
+    // under every automorphisms.
+    std::vector<Codeword> canonical_guesses;
+    CodewordSet population(_rules);
+    const CodewordSize m = _rules.codeword_size();
+    for (const Codeword &guess : population)
+    {
+        std::array<Letter, MAX_CODEWORD_SIZE> letters;
+        std::copy(guess.begin(), guess.end(), letters.begin());
+
+        std::strong_ordering cmp = std::strong_ordering::equal;
+        for (CodewordMorphism2 morph : automorphisms)
+        {
+            Letter next = static_cast<Letter>(_used.count());
+
+            // To compare h := morphism(g) against g in lexical order,
+            // we compare h[j] vs g[j] for each j = 0, ..., m-1.
+            // Note that h[j] = letter_map[g[position_inv[j]].
+            for (Position j = 0; j < m; j++)
+            {
+                Letter i = letters[j];
+                Letter ii = letters[morph.position_map.inverse()[j]];
+                if (ii >= next)
+                    ii = morph.letter_map[ii] = next++;
+                else
+                    ii = morph.letter_map[ii];
+                cmp = (ii <=> i);
+                if (cmp != std::strong_ordering::equal)
+                    break;
+            }
+
+            if (cmp < 0) // not canonical
+                break;
+        }
+
+        if (cmp >= 0) // guess is canonical
+        {
+            // Convert canonical guess back to the original space.
+            std::array<Letter, MAX_CODEWORD_SIZE> original;
+            for (Position j = 0; j < m; j++)
+            {
+                Letter ii = letters[fixed_inverse.position_map.inverse()[j]];
+                original[j] = fixed_inverse.letter_map[ii];
+
+            }
+            canonical_guesses.push_back(
+                Codeword(original.begin(), original.begin() + m));
+        }
+    }
+    return canonical_guesses;
 }
 
 } // namespace mastermind
