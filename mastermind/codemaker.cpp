@@ -1,4 +1,6 @@
 #include "codemaker.hpp"
+#include "tracker.hpp"
+
 #include <cassert>
 #include <random>
 #include <vector>

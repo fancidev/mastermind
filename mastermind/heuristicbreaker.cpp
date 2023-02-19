@@ -1,5 +1,6 @@
 
 #include "codebreaker.hpp"
+#include "tracker.hpp"
 
 #include <algorithm>
 #include <array>

@@ -1,7 +1,7 @@
 #include "codeword.hpp"
+#include "tracker.hpp"
 #include "codemaker.hpp"
 #include "codebreaker.hpp"
-#include "canonical.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -129,49 +129,49 @@ void test_breaker(const mastermind::CodewordRules &rules,
     std::cout << "  Max steps: " << worst_steps << std::endl;
 }
 
-static void _display_canonical_guesses(const CanonicalCodewordSequence &sequence,
-                                       std::span<const Codeword> candidate_guesses,
-                                       size_t &counter)
-{
-    if (sequence.size() >= 2)
-        return;
-
-    std::vector<CanonicalCodewordSequence> extended_sequences =
-        get_canonical_guesses(sequence, candidate_guesses);
-    for (const CanonicalCodewordSequence &extended_sequence : extended_sequences)
-    {
-        ++counter;
-        std::cout << counter << ">";
-        for (auto cw : extended_sequence)
-            std::cout << " " << cw;
-        std::cout << std::endl;
-
-//        if (g.is_singleton())
-//        {
-//            for (const Codeword &guess : g.sequence())
-//                std::cout << guess << " ";
-//            std::cout << "-> all" << std::endl;
-//        }
-//        else
-//        {
-//            std::cout << g.sequence().back() << std::endl;
-//            _display_canonical_guesses(g, candidate_guesses, counter);
-//        }
-        _display_canonical_guesses(extended_sequence, candidate_guesses, counter);
-    }
-}
-
-void display_canonical_guesses(const CodewordRules &rules)
-{
-    // TODO: add Codeword::enumerate()
-    CodewordSet population(rules);
-    std::vector<Codeword> candidate_guesses(population.begin(), population.end());
-    CanonicalCodewordSequence sequence(rules);
-
-    size_t counter = 0;
-    _display_canonical_guesses(sequence, candidate_guesses, counter);
-    std::cout << "*** Counter = " << counter << std::endl;
-}
+//static void _display_canonical_guesses(const CanonicalCodewordSequence &sequence,
+//                                       std::span<const Codeword> candidate_guesses,
+//                                       size_t &counter)
+//{
+//    if (sequence.size() >= 2)
+//        return;
+//
+//    std::vector<CanonicalCodewordSequence> extended_sequences =
+//        get_canonical_guesses(sequence, candidate_guesses);
+//    for (const CanonicalCodewordSequence &extended_sequence : extended_sequences)
+//    {
+//        ++counter;
+//        std::cout << counter << ">";
+//        for (auto cw : extended_sequence)
+//            std::cout << " " << cw;
+//        std::cout << std::endl;
+//
+////        if (g.is_singleton())
+////        {
+////            for (const Codeword &guess : g.sequence())
+////                std::cout << guess << " ";
+////            std::cout << "-> all" << std::endl;
+////        }
+////        else
+////        {
+////            std::cout << g.sequence().back() << std::endl;
+////            _display_canonical_guesses(g, candidate_guesses, counter);
+////        }
+//        _display_canonical_guesses(extended_sequence, candidate_guesses, counter);
+//    }
+//}
+//
+//void display_canonical_guesses(const CodewordRules &rules)
+//{
+//    // TODO: add Codeword::enumerate()
+//    CodewordSet population(rules);
+//    std::vector<Codeword> candidate_guesses(population.begin(), population.end());
+//    CanonicalCodewordSequence sequence(rules);
+//
+//    size_t counter = 0;
+//    _display_canonical_guesses(sequence, candidate_guesses, counter);
+//    std::cout << "*** Counter = " << counter << std::endl;
+//}
 
 int main(int argc, const char **argv)
 {

@@ -1,4 +1,4 @@
-#include "codeword.hpp"
+#include "tracker.hpp"
 
 #include <algorithm>
 #include <compare>
@@ -76,8 +76,8 @@ CodewordSet::CodewordSet(const CodewordRules &rules) : _rules(rules)
         _list.push_back(get_codeword_at<MAX_CODEWORD_SIZE>(index, rules, sub_population_sizes));
 
     const size_t m = rules.codeword_size();
-    CodewordMorphism2::PositionMap position_map(m);
-    CodewordMorphism2::LetterMap letter_map;
+    CodewordMorphism::PositionMap position_map(m);
+    CodewordMorphism::LetterMap letter_map;
     do
     {
         _morphisms.push_back({position_map, letter_map});
@@ -105,7 +105,7 @@ void CodewordSet::push_constraint(const Constraint &constraint)
     for (size_t in = 0; in < _morphisms.size(); in++)
     {
         // Make copy of morphism because we may extend its letter map.
-        CodewordMorphism2 morph(_morphisms[in]);
+        CodewordMorphism morph(_morphisms[in]);
 
         // Permute positions
         LetterSequence permuted(letters);
@@ -118,7 +118,7 @@ void CodewordSet::push_constraint(const Constraint &constraint)
         {
             Letter i = permuted[j];
             Letter ii = morph.letter_map[i];
-            if (ii == CodewordMorphism2::LetterMap::not_mapped)
+            if (ii == CodewordMorphism::LetterMap::not_mapped)
                 ii = morph.letter_map[i] = next++;
             permuted[j] = ii;
         }
@@ -157,10 +157,10 @@ std::vector<Codeword> CodewordSet::get_canonical_guesses() const
     // It is equal to each morphism composed with the inverse of an
     // arbitrary fixed morphism.
     assert(_morphisms.size() > 0);
-    CodewordMorphism2 fixed_inverse { _morphisms[0].inverse() };
-    std::vector<CodewordMorphism2> automorphisms;
+    CodewordMorphism fixed_inverse { _morphisms[0].inverse() };
+    std::vector<CodewordMorphism> automorphisms;
     automorphisms.reserve(_morphisms.size());
-    for (const CodewordMorphism2 &morph : _morphisms)
+    for (const CodewordMorphism &morph : _morphisms)
     {
         automorphisms.push_back(morph.composed_with(fixed_inverse));
     }
@@ -181,7 +181,7 @@ std::vector<Codeword> CodewordSet::get_canonical_guesses() const
         std::copy(guess.begin(), guess.end(), letters.begin());
 
         std::strong_ordering cmp = std::strong_ordering::equal;
-        for (CodewordMorphism2 morph : automorphisms)
+        for (CodewordMorphism morph : automorphisms)
         {
             Letter next = static_cast<Letter>(_used.count());
 
