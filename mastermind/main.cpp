@@ -103,9 +103,10 @@ void test_breaker(const mastermind::CodewordRules &rules,
     CodewordSet population(rules);
     size_t total_steps = 0;
     size_t worst_steps = 0;
-    for (size_t index = 0; index < population.size(); ++index)
+    const size_t count = population.possible_secrets().size();
+    for (size_t index = 0; index < count; ++index)
     {
-        std::unique_ptr<Codemaker> maker(create_static_codemaker(population[index]));
+        std::unique_ptr<Codemaker> maker(create_static_codemaker(population.possible_secrets()[index]));
         std::unique_ptr<CodeBreaker> breaker(create_heuristic_breaker(rules, name));
 
         size_t round = 0;
@@ -123,8 +124,8 @@ void test_breaker(const mastermind::CodewordRules &rules,
             break;
     }
     std::cout << "**" << name << std::endl;
-    std::cout << "  Avg steps: " << total_steps << "/" << population.size()
-        << " = " << static_cast<double>(total_steps) / population.size()
+    std::cout << "  Avg steps: " << total_steps << "/" << count
+        << " = " << static_cast<double>(total_steps) / count
         << std::endl;
     std::cout << "  Max steps: " << worst_steps << std::endl;
 }
@@ -275,27 +276,28 @@ int main(int argc, const char **argv)
     if (action == nullptr)
         return usage("missing action");
 
-    CodewordSet secrets(rules);
+    CodewordSet tracker(rules);
     for (const Constraint &constraint : constraints)
     {
         if (!constraint.guess.conforms_to(rules))
             return usage("invalid constraint");
-        secrets.push_constraint(constraint);
+        tracker.push_constraint(constraint);
     }
 
     if (action == "count"sv)
     {
-        std::cout << secrets.size() << std::endl;
+        std::cout << tracker.possible_secrets().size() << std::endl;
     }
     else if (action == "list"sv)
     {
-        for (Codeword codeword : secrets)
+        for (Codeword codeword : tracker.possible_secrets())
         {
             std::cout << codeword << std::endl;
         }
     }
     else if (action == "info"sv)
     {
+        const auto &secrets = tracker.possible_secrets();
         std::cout << "Possible secrets: #" << secrets.size() << std::endl;
         if (secrets.size() > 0)
         {
@@ -304,18 +306,18 @@ int main(int argc, const char **argv)
                       << secrets[secrets.size() - 1] << std::endl;
         }
         std::cout << "Constraints:" << std::endl;
-        for (size_t i = 0; i < secrets.constraints().size(); i++)
+        for (size_t i = 0; i < tracker.constraints().size(); i++)
         {
-            std::cout << " [" << i << "] " << secrets.constraints()[i] << std::endl;
+            std::cout << " [" << i << "] " << tracker.constraints()[i] << std::endl;
         }
         std::cout << "Morphisms:" << std::endl;
-        for (size_t i = 0; i < secrets.morphisms().size(); i++)
+        for (size_t i = 0; i < tracker.morphisms().size(); i++)
         {
-            const auto &morph = secrets.morphisms()[i];
-            std::cout << " [" << i << "] " << morph.position_map << morph.letter_map << std::endl;
+            const auto &morph = tracker.morphisms()[i];
+            std::cout << " [" << i << "] " << morph.position_inv.inverse() << morph.letter_map << std::endl;
         }
         std::cout << "Canonical guesses:" << std::endl;
-        std::vector<Codeword> canonical = secrets.get_canonical_guesses();
+        std::vector<Codeword> canonical = tracker.get_canonical_guesses();
         for (size_t i = 0; i < canonical.size(); i++)
         {
             std::cout << " [" << i << "] " << canonical[i] << std::endl;

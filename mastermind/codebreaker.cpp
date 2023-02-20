@@ -9,7 +9,7 @@ namespace mastermind {
 class SimpleCodeBreaker : public CodeBreaker
 {
 public:
-    SimpleCodeBreaker(const CodewordRules &rules) : _possible_secrets(rules)
+    SimpleCodeBreaker(const CodewordRules &rules) : _tracker(rules)
     {
     }
 
@@ -20,18 +20,18 @@ public:
 
     virtual Codeword make_guess() override
     {
-        if (_possible_secrets.empty())
+        if (_tracker.possible_secrets().empty())
             throw std::runtime_error("no possible secret");
-        return _possible_secrets[0];
+        return _tracker.possible_secrets().front();
     }
 
     virtual void step(const Constraint &constraint) override
     {
-        _possible_secrets.push_constraint(constraint);
+        _tracker.push_constraint(constraint);
     }
 
 private:
-    CodewordSet _possible_secrets;
+    CodewordSet _tracker;
 };
 
 std::unique_ptr<CodeBreaker>

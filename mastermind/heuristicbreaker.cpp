@@ -44,7 +44,8 @@ public:
       : _partition_count(Feedback::perfect_match(rules).ordinal() + 1)
     {
         CodewordSet population(rules);
-        _population.assign(population.begin(), population.end());
+        _population.assign(population.possible_secrets().begin(),
+                           population.possible_secrets().end());
         _admissible = std::span(_population);
     }
 

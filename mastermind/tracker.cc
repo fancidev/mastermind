@@ -98,51 +98,42 @@ void CodewordSet::push_constraint(const Constraint &constraint)
     const size_t num_used = _used.count();
 
     // Update the canonical mappings.
-    const LetterSequence letters(constraint.guess);
-    LetterSequence canonical;
     const size_t m = _rules.codeword_size();
+    std::array<Letter, MAX_CODEWORD_SIZE> letters;
+    std::copy(constraint.guess.begin(), constraint.guess.end(), letters.begin());
+
+    std::array<Letter, MAX_CODEWORD_SIZE> canonical;
+    std::fill(canonical.begin(), canonical.end(), Letter(MAX_ALPHABET_SIZE));
+
     size_t out = 0;
-    for (size_t in = 0; in < _morphisms.size(); in++)
+    for (CodewordMorphism morph : _morphisms)
     {
         // Make copy of morphism because we may extend its letter map.
-        CodewordMorphism morph(_morphisms[in]);
-
-        // Permute positions
-        LetterSequence permuted(letters);
-        for (size_t j = 0; j < m; j++)
-            permuted[morph.position_map[j]] = letters[j];
 
         // Permute letters
         Letter next = static_cast<Letter>(num_used);
-        for (size_t j = 0; j < m; j++)
+        std::strong_ordering cmp = std::strong_ordering::equal;
+        for (Position j = 0; j < m; j++)
         {
-            Letter i = permuted[j];
+            Letter i = letters[morph.position_inv[j]];
             Letter ii = morph.letter_map[i];
             if (ii == CodewordMorphism::LetterMap::not_mapped)
                 ii = morph.letter_map[i] = next++;
-            permuted[j] = ii;
+            if (cmp == 0)
+            {
+                cmp = (ii <=> canonical[j]);
+                if (cmp > 0)
+                    break;
+            }
+            if (cmp < 0)
+                canonical[j] = ii;
         }
 
         // Keep this morphism if the permuted sequence is canonical.
-        if (in == 0)
-        {
-            canonical = permuted;
+        if (cmp < 0)
+            out = 0;
+        if (cmp <= 0)
             _morphisms[out++] = morph;
-        }
-        else
-        {
-            auto cmp = (permuted <=> canonical);
-            if (cmp < 0)
-            {
-                out = 0;
-                _morphisms[out++] = morph;
-                canonical = permuted;
-            }
-            else if (cmp == 0)
-            {
-                _morphisms[out++] = morph;
-            }
-        }
     }
     assert(out > 0);
     _morphisms.resize(out);
@@ -175,7 +166,7 @@ std::vector<Codeword> CodewordSet::get_canonical_guesses() const
     std::vector<Codeword> canonical_guesses;
     CodewordSet population(_rules);
     const CodewordSize m = _rules.codeword_size();
-    for (const Codeword &guess : population)
+    for (const Codeword &guess : population.possible_secrets())
     {
         std::array<Letter, MAX_CODEWORD_SIZE> letters;
         std::copy(guess.begin(), guess.end(), letters.begin());
@@ -191,7 +182,7 @@ std::vector<Codeword> CodewordSet::get_canonical_guesses() const
             for (Position j = 0; j < m; j++)
             {
                 Letter i = letters[j];
-                Letter ii = letters[morph.position_map.inverse()[j]];
+                Letter ii = letters[morph.position_inv[j]];
                 if (ii >= next)
                     ii = morph.letter_map[ii] = next++;
                 else
@@ -211,9 +202,8 @@ std::vector<Codeword> CodewordSet::get_canonical_guesses() const
             std::array<Letter, MAX_CODEWORD_SIZE> original;
             for (Position j = 0; j < m; j++)
             {
-                Letter ii = letters[fixed_inverse.position_map.inverse()[j]];
+                Letter ii = letters[fixed_inverse.position_inv[j]];
                 original[j] = fixed_inverse.letter_map[ii];
-
             }
             canonical_guesses.push_back(
                 Codeword(original.begin(), original.begin() + m));

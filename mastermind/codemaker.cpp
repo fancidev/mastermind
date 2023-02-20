@@ -40,7 +40,7 @@ static size_t get_random_index(size_t count)
 Codeword sample(const CodewordRules &rules)
 {
     CodewordSet population(rules);
-    return population[get_random_index(population.size())];
+    return population.possible_secrets()[get_random_index(population.possible_secrets().size())];
 }
 
 //class DynamicCodemaker : public Codemaker

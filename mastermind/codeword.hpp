@@ -386,56 +386,6 @@ private:
         cyclic_mask<mask_type>(MAX_CODEWORD_SIZE, MAX_ALPHABET_SIZE);
 };
 
-/// Represents a sequence of no more than `MAX_CODEWORD_SIZE` letters.
-class LetterSequence
-{
-public:
-    constexpr LetterSequence() noexcept = default;
-
-    explicit constexpr LetterSequence(const Codeword &codeword) noexcept
-    {
-        auto it = std::copy(codeword.begin(), codeword.end(), _letters.begin());
-        _size = it - _letters.begin();
-    }
-
-    using iterator = std::array<Letter, MAX_CODEWORD_SIZE>::iterator;
-    constexpr iterator begin() noexcept { return _letters.begin(); }
-    constexpr iterator end() noexcept { return _letters.begin() + _size; }
-
-    using const_iterator = std::array<Letter, MAX_CODEWORD_SIZE>::const_iterator;
-    constexpr const_iterator begin() const noexcept { return _letters.begin(); }
-    constexpr const_iterator end() const noexcept { return _letters.begin() + _size; }
-
-    constexpr Letter operator[](size_t j) const noexcept
-    {
-        assert(j < _size);
-        return _letters[j];
-    }
-
-    constexpr Letter &operator[](size_t j) noexcept
-    {
-        assert(j < _size);
-        return _letters[j];
-    }
-
-    constexpr std::strong_ordering operator<=>(const LetterSequence &other) const noexcept
-    {
-        assert(_size == other._size);
-        for (size_t j = 0; j < _size; j++)
-        {
-            if (_letters[j] < other._letters[j])
-                return std::strong_ordering::less;
-            if (_letters[j] > other._letters[j])
-                return std::strong_ordering::greater;
-        }
-        return std::strong_ordering::equal;
-    }
-
-private:
-    std::array<Letter, MAX_CODEWORD_SIZE> _letters;
-    std::size_t _size = 0;
-};
-
 /**
  * Represents the correlation between two codewords.
  *
