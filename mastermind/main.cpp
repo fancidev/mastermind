@@ -97,9 +97,12 @@ void self_play(const mastermind::CodewordRules &rules)
     }
 }
 
-void test_breaker(const mastermind::CodewordRules &rules,
-                  const char *name)
+static void test_breaker(const mastermind::CodewordRules &rules,
+                         const char *name)
 {
+    const size_t MAX_STEPS = 100;
+    std::array<size_t, MAX_STEPS + 1> stat {};
+
     CodewordSet population(rules);
     size_t total_steps = 0;
     size_t worst_steps = 0;
@@ -110,7 +113,7 @@ void test_breaker(const mastermind::CodewordRules &rules,
         std::unique_ptr<CodeBreaker> breaker(create_heuristic_breaker(rules, name));
 
         size_t round = 0;
-        while (++round < 10000)
+        while (++round < MAX_STEPS)
         {
             Codeword guess = breaker->make_guess();
             Feedback response = maker->respond(guess);
@@ -120,10 +123,16 @@ void test_breaker(const mastermind::CodewordRules &rules,
         }
         total_steps += round;
         worst_steps = std::max(worst_steps, round);
+        ++stat[round];
         if (index > 10000)
             break;
     }
     std::cout << "**" << name << std::endl;
+    for (size_t c = 0; c <= MAX_STEPS; c++)
+    {
+        if (stat[c] > 0)
+            std::cout << "  " << c << " steps: " << stat[c] << std::endl;
+    }
     std::cout << "  Avg steps: " << total_steps << "/" << count
         << " = " << static_cast<double>(total_steps) / count
         << std::endl;
@@ -262,6 +271,12 @@ int main(int argc, const char **argv)
                     return usage("invalid constraint supplied to -c option");
                 constraints.push_back(constraint);
             }
+            else if (opt[1] == 'b')
+            {
+                if (++i >= argc)
+                    return usage("missing argument");
+                heuristic = argv[i];
+            }
             else
                 return usage("unknown option");
         }
@@ -322,6 +337,10 @@ int main(int argc, const char **argv)
         {
             std::cout << " [" << i << "] " << canonical[i] << std::endl;
         }
+    }
+    else if (action == "test"sv)
+    {
+        test_breaker(rules, heuristic);
     }
     else if (action == "test"sv)
     {
